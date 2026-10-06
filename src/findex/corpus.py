@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, NamedTuple
+from typing import NamedTuple
 
 
 class Document(NamedTuple):

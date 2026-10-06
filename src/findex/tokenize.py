@@ -1,7 +1,6 @@
 import re
 import unicodedata
-from typing import Iterator
-
+from collections.abc import Iterator
 
 WORD_PATTERN = re.compile(r"[^\W\d_]+(?:['’ʼ][^\W\d_]+)*")
 
