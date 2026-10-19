@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .corpus import iter_documents
+from .timing import timed
 from .tokenize import tokenize
 
 
@@ -14,6 +15,7 @@ from .tokenize import tokenize
 class Posting:
     doc_id: int
     tf: int
+    positions: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,13 +26,17 @@ class DocMeta:
     length: int
 
 
+
+
+@timed
 def build_index(data_dir: Path):
     index = defaultdict(list)
     documents = {}
 
     for doc_id, document in enumerate(iter_documents(data_dir)):
-        counts = Counter(tokenize(document.text))
-        length = sum(counts.values())
+        tokens = list(tokenize(document.text))
+        counts = Counter(tokens)
+        length = len(tokens)
 
         documents[doc_id] = DocMeta(
             doc_id=doc_id,
@@ -39,19 +45,27 @@ def build_index(data_dir: Path):
             length=length,
         )
 
-        for term, tf in counts.items():
+        positions_by_term = defaultdict(list)
+        for position, term in enumerate(tokens):
+            positions_by_term[term].append(position)
+
+        for term, positions in positions_by_term.items():
             index[term].append(
-                Posting(doc_id, tf)
+                Posting(
+                    doc_id=doc_id,
+                    tf=counts[term],
+                    positions=tuple(positions),
+                )
             )
 
     for postings in index.values():
-        postings.sort(
-            key=lambda posting: posting.doc_id
-        )
+        postings.sort(key=lambda posting: posting.doc_id)
 
     return dict(index), documents
 
 
+
+@timed
 def save_index(
     index: dict[str, list[Posting]],
     documents: dict[int, DocMeta],
@@ -62,7 +76,7 @@ def save_index(
     data = {
         "index": {
             term: [
-                (posting.doc_id, posting.tf)
+                (posting.doc_id, posting.tf, posting.positions)
                 for posting in postings
             ]
             for term, postings in index.items()
@@ -83,6 +97,9 @@ def save_index(
     return time.perf_counter() - start
 
 
+
+
+@timed
 def load_index(
     input_path: Path,
 ) -> tuple[
@@ -94,16 +111,26 @@ def load_index(
 
     with input_path.open("rb") as file:
         # Не завантажуйте pickle-файли з ненадійних джерел:
-        # pickle може виконувати довільний код під час десеріалізації.
+        # pickle може виконувати довільний код.
         data = pickle.load(file)
 
-    index = {
-        term: [
-            Posting(doc_id, tf)
-            for doc_id, tf in postings
-        ]
-        for term, postings in data["index"].items()
-    }
+    index = {}
+    for term, postings in data["index"].items():
+        restored_postings = []
+
+        for item in postings:
+            doc_id, tf, *extra = item
+            positions = tuple(extra[0]) if extra else ()
+
+            restored_postings.append(
+                Posting(
+                    doc_id=doc_id,
+                    tf=tf,
+                    positions=positions,
+                )
+            )
+
+        index[term] = restored_postings
 
     documents = {
         doc_id: DocMeta(
@@ -117,8 +144,8 @@ def load_index(
     }
 
     elapsed = time.perf_counter() - start
-
     return index, documents, elapsed
+
 
 
 def postings_to_ids(

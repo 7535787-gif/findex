@@ -11,3 +11,7 @@ wheels/
 
 # Corpus
 data/
+
+# Generated search indexes
+index.bin
+index.json
