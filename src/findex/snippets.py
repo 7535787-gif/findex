@@ -18,19 +18,23 @@ def make_snippet(
         return "[Document text unavailable]"
 
     terms = {
-        term.lower()
+        term
         for query_term in query_terms
         for term in tokenize(query_term)
+        if term
     }
 
     if not text or not terms:
         return text[: 2 * context_chars]
 
+    alternatives = "|".join(
+        re.escape(term)
+        for term in sorted(terms, key=len, reverse=True)
+    )
+
+    # Unicode-aware boundaries: do not match a term inside a larger word.
     pattern = re.compile(
-        r"\b(" + "|".join(
-            re.escape(term)
-            for term in sorted(terms, key=len, reverse=True)
-        ) + r")\b",
+        rf"(?<!\w)({alternatives})(?!\w)",
         re.IGNORECASE,
     )
 
