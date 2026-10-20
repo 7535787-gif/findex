@@ -647,7 +647,7 @@ Short document ranks higher: True
 
 Короткий документ отримав вищу оцінку, що демонструє вплив нормалізації довжини в BM25.
 
-![Результати sanity checks](docs/images/lab03_sanity_checks.png)
+![Результати sanity checks](images/lab03_sanity_checks.png)
 
 *Рисунок 2 — Експерименти з ранжуванням.*
 
