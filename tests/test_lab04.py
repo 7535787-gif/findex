@@ -62,7 +62,10 @@ def test_average_document_length_positive(tiny_index: Index) -> None:
 
 
 def test_doc_length(tiny_index: Index) -> None:
-    assert tiny_index.doc_length(0) == 4
+    document = next(
+        doc for doc in tiny_index.documents.values() if Path(doc.path).name == "one.txt"
+    )
+    assert tiny_index.doc_length(document.doc_id) == 4
 
 
 @pytest.mark.parametrize(
