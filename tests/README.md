@@ -887,6 +887,7 @@ uv run python -m findex.demo_cache
 from functools import wraps
 from time import perf_counter
 
+
 def timed(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -934,7 +935,9 @@ def retry(times=3):
                 except Exception:
                     if attempt == times - 1:
                         raise
+
         return wrapper
+
     return decorator
 ```
 

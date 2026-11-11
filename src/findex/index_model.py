@@ -1,13 +1,9 @@
-
-from collections.abc import Iterator, Mapping
+from collections.abc import Generator, Iterator, Mapping
 from contextlib import contextmanager
 from functools import cached_property
 from pathlib import Path
-from typing import TypeVar
 
 from .index import DocMeta, Posting, load_index
-
-T = TypeVar("T")
 
 
 class Index(Mapping[str, tuple[Posting, ...]]):
@@ -18,10 +14,7 @@ class Index(Mapping[str, tuple[Posting, ...]]):
         postings: Mapping[str, list[Posting] | tuple[Posting, ...]],
         documents: Mapping[int, DocMeta],
     ) -> None:
-        self._postings = {
-            term: tuple(items)
-            for term, items in postings.items()
-        }
+        self._postings = {term: tuple(items) for term, items in postings.items()}
         self.documents = dict(documents)
 
     def __getitem__(self, term: str) -> tuple[Posting, ...]:
@@ -37,10 +30,7 @@ class Index(Mapping[str, tuple[Posting, ...]]):
         return term in self._postings
 
     def __repr__(self) -> str:
-        return (
-            f"Index(terms={len(self)}, "
-            f"documents={self.num_docs})"
-        )
+        return f"Index(terms={len(self)}, documents={self.num_docs})"
 
     @property
     def num_docs(self) -> int:
@@ -50,22 +40,19 @@ class Index(Mapping[str, tuple[Posting, ...]]):
     def avg_doc_length(self) -> float:
         if not self.documents:
             return 0.0
-        return (
-            sum(doc.length for doc in self.documents.values())
-            / self.num_docs
-        )
+        return sum(doc.length for doc in self.documents.values()) / self.num_docs
 
     def df(self, term: str) -> int:
         """Кількість документів, що містять термін."""
         return len(self._postings.get(term, ()))
-    
-def doc_length(self, doc_id: int) -> int:
-    """Повертає кількість термінів у документі."""
-    return self.documents[doc_id].length
+
+    def doc_length(self, doc_id: int) -> int:
+        """Повертає кількість термінів у документі."""
+        return self.documents[doc_id].length
 
 
 @contextmanager
-def open_index(path: str | Path):
+def open_index(path: str | Path) -> Generator[Index]:
     """Завантажує індекс і звільняє посилання після використання."""
     index_data, documents, _ = load_index(Path(path))
     index = Index(index_data, documents)

@@ -6,10 +6,8 @@ from pathlib import Path
 from .index import load_index, search
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Search the inverted index"
-    )
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Search the inverted index")
 
     parser.add_argument(
         "index_file",
@@ -30,15 +28,15 @@ def main():
     )
 
     parser.add_argument(
-    "--operation",
-    type=str.upper,
-    choices=["AND", "OR", "NOT"],
-    default="AND",
-    help="Boolean operation",
-)
+        "--operation",
+        type=str.upper,
+        choices=["AND", "OR", "NOT"],
+        default="AND",
+        help="Boolean operation",
+    )
 
     args = parser.parse_args()
-    
+
     tracemalloc.start()
 
     index, documents, load_time = load_index(args.index_file)

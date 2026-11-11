@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from findex.cached_search import demo_cache

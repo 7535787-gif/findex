@@ -9,7 +9,9 @@ from findex.corpus import iter_documents
 from findex.tokenize import tokenize
 
 
-def calculate_stats(root: Path, limit: int | None = None) -> tuple:
+def calculate_stats(
+    root: Path, limit: int | None = None
+) -> tuple[int, int, Counter[str]]:
     documents = iter_documents(root)
 
     if limit is not None:
@@ -17,7 +19,7 @@ def calculate_stats(root: Path, limit: int | None = None) -> tuple:
 
     document_count = 0
     token_count = 0
-    vocabulary = Counter()
+    vocabulary: Counter[str] = Counter()
 
     for document in documents:
         document_count += 1
@@ -29,22 +31,17 @@ def calculate_stats(root: Path, limit: int | None = None) -> tuple:
     return document_count, token_count, vocabulary
 
 
-def calculate_stats_eager(root: Path, limit: int | None = None) -> tuple:
+def calculate_stats_eager(
+    root: Path, limit: int | None = None
+) -> tuple[int, int, Counter[str]]:
     documents = list(iter_documents(root))
 
     if limit is not None:
         documents = documents[:limit]
 
-    token_lists = [
-        list(tokenize(document.text))
-        for document in documents
-    ]
+    token_lists = [list(tokenize(document.text)) for document in documents]
 
-    vocabulary = Counter(
-        token
-        for tokens in token_lists
-        for token in tokens
-    )
+    vocabulary = Counter(token for tokens in token_lists for token in tokens)
 
     token_count = sum(len(tokens) for tokens in token_lists)
 

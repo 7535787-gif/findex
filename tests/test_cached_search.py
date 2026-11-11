@@ -1,4 +1,3 @@
-
 from findex.cached_search import make_cached_query
 from findex.index import DocMeta, Posting
 from findex.index_model import Index

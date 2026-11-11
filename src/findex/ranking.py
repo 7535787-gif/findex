@@ -1,4 +1,3 @@
-
 import math
 from dataclasses import dataclass
 from heapq import nlargest
@@ -20,8 +19,7 @@ class SearchResult:
 
 
 class Scorer(Protocol):
-    def score(self, term: str, tf: int, index: Index, doc_id: int) -> float:
-        ...
+    def score(self, term: str, tf: int, index: Index, doc_id: int) -> float: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,9 +49,7 @@ class BM25:
         if df == 0:
             return 0.0
 
-        idf = math.log(
-            1 + (index.num_docs - df + 0.5) / (df + 0.5)
-        )
+        idf = math.log(1 + (index.num_docs - df + 0.5) / (df + 0.5))
         doc_length = index.documents[doc_id].length
         avg_length = index.avg_doc_length
 
@@ -61,11 +57,9 @@ class BM25:
             return 0.0
 
         length_norm = 1 - self.b + self.b * doc_length / avg_length
-        tf_component = (
-            tf * (self.k1 + 1)
-            / (tf + self.k1 * length_norm)
-        )
+        tf_component = tf * (self.k1 + 1) / (tf + self.k1 * length_norm)
         return idf * tf_component
+
 
 @timed
 def search(
@@ -79,23 +73,18 @@ def search(
         return []
 
     normalized_terms = [
-        term
-        for query_term in query_terms
-        for term in tokenize(query_term)
+        term for query_term in query_terms for term in tokenize(query_term)
     ]
 
     scores: dict[int, float] = {}
 
     for term in normalized_terms:
-        for posting in index._postings.get(term, ()):
-            scores[posting.doc_id] = (
-                scores.get(posting.doc_id, 0.0)
-                + scorer.score(
-                    term, posting.tf, index, posting.doc_id
-                )
+        for posting in index.get(term, ()):
+            scores[posting.doc_id] = scores.get(posting.doc_id, 0.0) + scorer.score(
+                term, posting.tf, index, posting.doc_id
             )
 
-    results = []
+    results: list[SearchResult] = []
 
     for doc_id, score in scores.items():
         document = index.documents[doc_id]

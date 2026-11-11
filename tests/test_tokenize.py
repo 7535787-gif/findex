@@ -60,6 +60,7 @@ def test_digits():
 def test_empty_text():
     assert list(tokenize("")) == []
 
+
 def test_unicode_normalization():
     text = "cafe\u0301"
     assert list(tokenize(text)) == ["café"]

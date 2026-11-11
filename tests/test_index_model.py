@@ -1,4 +1,3 @@
-
 from findex.index import DocMeta, Posting
 from findex.index_model import Index
 

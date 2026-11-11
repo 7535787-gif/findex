@@ -1,14 +1,19 @@
 import argparse
+import logging
 import pickle
 import time
 import tracemalloc
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from .corpus import iter_documents
 from .timing import timed
 from .tokenize import tokenize
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,14 +31,29 @@ class DocMeta:
     length: int
 
 
-
-
 @timed
-def build_index(data_dir: Path):
-    index = defaultdict(list)
-    documents = {}
+def build_index(
+    data_dir: Path,
+    progress_callback: Callable[[int], None] | None = None,
+    *,
+    limit: int | None = None,
+    include_positions: bool = True,
+) -> tuple[dict[str, list[Posting]], dict[int, DocMeta]]:
+    """Build an inverted index, optionally limiting documents and positions.
+
+    ``include_positions`` defaults to True to preserve the behavior of existing
+    Python callers. The CLI exposes positions as an opt-in flag.
+    """
+    if limit is not None and limit < 1:
+        raise ValueError("Document limit must be greater than zero")
+
+    index: defaultdict[str, list[Posting]] = defaultdict(list)
+    documents: dict[int, DocMeta] = {}
 
     for doc_id, document in enumerate(iter_documents(data_dir)):
+        if limit is not None and doc_id >= limit:
+            break
+
         tokens = list(tokenize(document.text))
         counts = Counter(tokens)
         length = len(tokens)
@@ -44,17 +64,20 @@ def build_index(data_dir: Path):
             title=document.path.stem,
             length=length,
         )
+        if progress_callback is not None:
+            progress_callback(doc_id + 1)
 
-        positions_by_term = defaultdict(list)
-        for position, term in enumerate(tokens):
-            positions_by_term[term].append(position)
+        positions_by_term: defaultdict[str, list[int]] = defaultdict(list)
+        if include_positions:
+            for position, term in enumerate(tokens):
+                positions_by_term[term].append(position)
 
-        for term, positions in positions_by_term.items():
+        for term, frequency in counts.items():
             index[term].append(
                 Posting(
                     doc_id=doc_id,
-                    tf=counts[term],
-                    positions=tuple(positions),
+                    tf=frequency,
+                    positions=tuple(positions_by_term[term]),
                 )
             )
 
@@ -62,7 +85,6 @@ def build_index(data_dir: Path):
         postings.sort(key=lambda posting: posting.doc_id)
 
     return dict(index), documents
-
 
 
 @timed
@@ -76,8 +98,7 @@ def save_index(
     data = {
         "index": {
             term: [
-                (posting.doc_id, posting.tf, posting.positions)
-                for posting in postings
+                (posting.doc_id, posting.tf, posting.positions) for posting in postings
             ]
             for term, postings in index.items()
         },
@@ -97,8 +118,6 @@ def save_index(
     return time.perf_counter() - start
 
 
-
-
 @timed
 def load_index(
     input_path: Path,
@@ -114,9 +133,9 @@ def load_index(
         # pickle може виконувати довільний код.
         data = pickle.load(file)
 
-    index = {}
+    index: dict[str, list[Posting]] = {}
     for term, postings in data["index"].items():
-        restored_postings = []
+        restored_postings: list[Posting] = []
 
         for item in postings:
             doc_id, tf, *extra = item
@@ -139,35 +158,31 @@ def load_index(
             title=title,
             length=length,
         )
-        for doc_id, (path, title, length)
-        in data["documents"].items()
+        for doc_id, (path, title, length) in data["documents"].items()
     }
 
     elapsed = time.perf_counter() - start
     return index, documents, elapsed
 
 
-
 def postings_to_ids(
     postings: list[Posting],
 ) -> list[int]:
     """Перетворює список Posting у список doc_id."""
-    return [
-        posting.doc_id
-        for posting in postings
-    ]
+    return [posting.doc_id for posting in postings]
 
 
 # =========================
 # MERGE: AND
 # =========================
 
+
 def and_merge(
     left: list[int],
     right: list[int],
 ) -> list[int]:
     """Перетин двох відсортованих списків через два покажчики."""
-    result = []
+    result: list[int] = []
 
     i = 0
     j = 0
@@ -189,12 +204,13 @@ def and_merge(
 # MERGE: OR
 # =========================
 
+
 def or_merge(
     left: list[int],
     right: list[int],
 ) -> list[int]:
     """Об'єднання двох відсортованих списків через два покажчики."""
-    result = []
+    result: list[int] = []
 
     i = 0
     j = 0
@@ -221,12 +237,13 @@ def or_merge(
 # MERGE: NOT
 # =========================
 
+
 def not_merge(
     all_docs: list[int],
     excluded: list[int],
 ) -> list[int]:
     """Виключає excluded з all_docs через два покажчики."""
-    result = []
+    result: list[int] = []
 
     i = 0
     j = 0
@@ -250,6 +267,7 @@ def not_merge(
 # MERGE SEARCH
 # =========================
 
+
 def search_and(
     index: dict[str, list[Posting]],
     terms: list[str],
@@ -258,14 +276,10 @@ def search_and(
     if not terms:
         return []
 
-    result = postings_to_ids(
-        index.get(terms[0], [])
-    )
+    result = postings_to_ids(index.get(terms[0], []))
 
     for term in terms[1:]:
-        current = postings_to_ids(
-            index.get(term, [])
-        )
+        current = postings_to_ids(index.get(term, []))
 
         result = and_merge(
             result,
@@ -283,9 +297,7 @@ def search_or(
     result = []
 
     for term in terms:
-        current = postings_to_ids(
-            index.get(term, [])
-        )
+        current = postings_to_ids(index.get(term, []))
 
         result = or_merge(
             result,
@@ -303,9 +315,7 @@ def search_not(
     """NOT-пошук через merge."""
     all_docs = sorted(documents.keys())
 
-    excluded = postings_to_ids(
-        index.get(term, [])
-    )
+    excluded = postings_to_ids(index.get(term, []))
 
     return not_merge(
         all_docs,
@@ -317,6 +327,7 @@ def search_not(
 # SET SEARCH
 # =========================
 
+
 def search_and_set(
     index: dict[str, list[Posting]],
     terms: list[str],
@@ -325,18 +336,10 @@ def search_and_set(
     if not terms:
         return []
 
-    result = set(
-        postings_to_ids(
-            index.get(terms[0], [])
-        )
-    )
+    result = set(postings_to_ids(index.get(terms[0], [])))
 
     for term in terms[1:]:
-        current = set(
-            postings_to_ids(
-                index.get(term, [])
-            )
-        )
+        current = set(postings_to_ids(index.get(term, [])))
 
         result &= current
 
@@ -348,14 +351,10 @@ def search_or_set(
     terms: list[str],
 ) -> list[int]:
     """OR-пошук через set."""
-    result = set()
+    result: set[int] = set()
 
     for term in terms:
-        current = set(
-            postings_to_ids(
-                index.get(term, [])
-            )
-        )
+        current = set(postings_to_ids(index.get(term, [])))
 
         result |= current
 
@@ -370,31 +369,25 @@ def search_not_set(
     """NOT-пошук через set."""
     all_docs = set(documents.keys())
 
-    excluded = set(
-        postings_to_ids(
-            index.get(term, [])
-        )
-    )
+    excluded = set(postings_to_ids(index.get(term, [])))
 
-    return sorted(
-        all_docs - excluded
-    )
+    return sorted(all_docs - excluded)
 
 
 # =========================
 # ЗАГАЛЬНИЙ ПОШУК
 # =========================
 
+
 def search(
     index: dict[str, list[Posting]],
     documents: dict[int, DocMeta],
     terms: list[str],
-    operation: str = "AND",
-    engine: str = "merge",
+    operation: Literal["AND", "OR", "NOT"] = "AND",
+    engine: Literal["merge", "set"] = "merge",
 ) -> list[int]:
 
     if engine == "merge":
-
         if operation == "AND":
             return search_and(
                 index,
@@ -409,9 +402,7 @@ def search(
 
         elif operation == "NOT":
             if len(terms) != 1:
-                raise ValueError(
-                    "NOT requires exactly one term"
-                )
+                raise ValueError("NOT requires exactly one term")
 
             return search_not(
                 index,
@@ -420,7 +411,6 @@ def search(
             )
 
     elif engine == "set":
-
         if operation == "AND":
             return search_and_set(
                 index,
@@ -435,9 +425,7 @@ def search(
 
         elif operation == "NOT":
             if len(terms) != 1:
-                raise ValueError(
-                    "NOT requires exactly one term"
-                )
+                raise ValueError("NOT requires exactly one term")
 
             return search_not_set(
                 index,
@@ -445,16 +433,11 @@ def search(
                 terms[0],
             )
 
-    raise ValueError(
-        f"Unknown operation or engine: "
-        f"{operation}, {engine}"
-    )
+    raise ValueError(f"Unknown operation or engine: {operation}, {engine}")
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Build and save an inverted index"
-    )
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Build and save an inverted index")
 
     parser.add_argument(
         "data_dir",
@@ -475,17 +458,11 @@ def main():
 
     start = time.perf_counter()
 
-    index, documents = build_index(
-        args.data_dir
-    )
+    index, documents = build_index(args.data_dir)
 
-    build_time = (
-        time.perf_counter() - start
-    )
+    build_time = time.perf_counter() - start
 
-    _, peak = (
-    tracemalloc.get_traced_memory()
-    )
+    _, peak = tracemalloc.get_traced_memory()
 
     tracemalloc.stop()
 
@@ -507,39 +484,21 @@ def main():
         json_path,
     )
 
-    print(
-        f"Documents: {len(documents)}"
-    )
+    logger.info("Documents: %s", len(documents))
 
-    print(
-        f"Terms: {len(index)}"
-    )
+    logger.info("Terms: %s", len(index))
 
-    print(
-        f"Build time: {build_time:.6f} s"
-    )
+    logger.info("Build time: %.6f s", build_time)
 
-    print(
-        f"Build peak memory: "
-        f"{peak / 1024 / 1024:.2f} MB"
-    )
+    logger.info("Build peak memory: %.2f MB", peak / 1024 / 1024)
 
-    print(
-        f"Save time: {save_time:.6f} s"
-    )
+    logger.info("Save time: %.6f s", save_time)
 
-    print(
-        f"JSON save time: "
-        f"{json_save_time:.6f} s"
-    )
+    logger.info("JSON save time: %.6f s", json_save_time)
 
-    print(
-        f"Index saved to: {args.out}"
-    )
+    logger.info("Index saved to: %s", args.out)
 
-    print(
-        f"JSON index saved to: {json_path}"
-    )
+    logger.info("JSON index saved to: %s", json_path)
 
 
 if __name__ == "__main__":

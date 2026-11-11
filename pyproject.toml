@@ -1,13 +1,16 @@
 [project]
 name = "findex"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.4.0"
+description = "A small full-text search engine for learning information retrieval"
 readme = "README.md"
-authors = [
-    { name = "7535787-gif", email = "7535787@stud.kai.edu.ua" }
-]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "typer>=0.12",
+    "rich>=13",
+]
+
+[project.scripts]
+findex = "findex.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.12.17,<0.13.0"]
@@ -15,6 +18,40 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
-    "ruff>=0.16.8",
+    "pytest>=8.0",
+    "hypothesis>=6.0",
+    "ruff>=0.8",
+    "pyright>=1.1",
+    "pytest-cov>=6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["slow: tests that take more than one second"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.pyright]
+typeCheckingMode = "strict"
+include = ["src/findex"]
+pythonVersion = "3.14"
+
+[tool.uv]
+package = true
+
+[tool.coverage.run]
+branch = true
+source = ["findex"]
+omit = [
+    "src/findex/__init__.py",
+    "src/findex/check_terms.py",
+    "src/findex/demo_cache.py",
+    "src/findex/evaluate.py",
+    "src/findex/memory.py",
+    "src/findex/sanity_checks.py",
+    "src/findex/search.py",
+    "src/findex/stats.py",
 ]

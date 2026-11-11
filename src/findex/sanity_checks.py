@@ -1,20 +1,18 @@
-
 from pathlib import Path
 
+from findex.index import Posting
 from findex.index_model import open_index
 from findex.ranking import BM25, TfIdf, search
 
 
-def main():
+def main() -> None:
     with open_index(Path("index.bin")) as index:
         bm25 = BM25()
         tfidf = TfIdf()
 
         print("\n1. Rare term vs common term")
 
-        rare_terms = sorted(
-            term for term in index if index.df(term) == 1
-        )
+        rare_terms = sorted(term for term in index if index.df(term) == 1)
         common_terms = sorted(
             (term for term in index if index.df(term) > 1),
             key=lambda term: index.df(term),
@@ -27,16 +25,12 @@ def main():
             rare_posting = index[rare_term][0]
 
             for common_term in common_terms:
-                common_doc_ids = {
-                    posting.doc_id for posting in index[common_term]
-                }
+                common_doc_ids = {posting.doc_id for posting in index[common_term]}
 
                 if rare_posting.doc_id in common_doc_ids:
                     continue
 
-                rare_results = search(
-                    index, [rare_term], tfidf, top_k=index.num_docs
-                )
+                rare_results = search(index, [rare_term], tfidf, top_k=index.num_docs)
                 common_results = search(
                     index, [common_term], tfidf, top_k=index.num_docs
                 )
@@ -60,17 +54,9 @@ def main():
                     None,
                 )
 
-                print(
-                    f"Rare term: {rare_term}, df={index.df(rare_term)}"
-                )
-                print(
-                    f"Common term: {common_term}, "
-                    f"df={index.df(common_term)}"
-                )
-                print(
-                    f"Rare-term document id={rare_posting.doc_id}, "
-                    f"rank={rare_rank}"
-                )
+                print(f"Rare term: {rare_term}, df={index.df(rare_term)}")
+                print(f"Common term: {common_term}, df={index.df(common_term)}")
+                print(f"Rare-term document id={rare_posting.doc_id}, rank={rare_rank}")
                 print(
                     f"Common-term document id={common_posting.doc_id}, "
                     f"rank={common_rank}"
@@ -104,22 +90,17 @@ def main():
             print(f"Score with tf=20: {score_twenty:.4f}")
             print(
                 "Saturation demonstrated:",
-                score_twenty > score_one
-                and score_twenty < score_one * 20,
+                score_twenty > score_one and score_twenty < score_one * 20,
             )
         else:
             print(f"Term '{term}' not found.")
 
         print("\n3. Short vs long document")
 
-        candidates = []
+        candidates: list[tuple[int, str, Posting, Posting]] = []
 
         for candidate_term in index:
-            postings = [
-                posting
-                for posting in index[candidate_term]
-                if posting.tf == 1
-            ]
+            postings = [posting for posting in index[candidate_term] if posting.tf == 1]
 
             for short in postings:
                 for long in postings:
@@ -137,16 +118,10 @@ def main():
                         )
 
         if candidates:
-            _, candidate_term, short, long = max(
-                candidates, key=lambda item: item[0]
-            )
+            _, candidate_term, short, long = max(candidates, key=lambda item: item[0])
 
-            short_score = bm25.score(
-                candidate_term, 1, index, short.doc_id
-            )
-            long_score = bm25.score(
-                candidate_term, 1, index, long.doc_id
-            )
+            short_score = bm25.score(candidate_term, 1, index, short.doc_id)
+            long_score = bm25.score(candidate_term, 1, index, long.doc_id)
 
             print(f"Term: {candidate_term}")
             print(

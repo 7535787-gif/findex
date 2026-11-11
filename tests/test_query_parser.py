@@ -1,5 +1,3 @@
-
-
 from findex.index import DocMeta, Posting
 from findex.index_model import Index
 from findex.query_parser import (
@@ -17,9 +15,7 @@ def test_single_term():
 
 
 def test_implicit_and():
-    assert parse_query("python async") == And(
-        Term("python"), Term("async")
-    )
+    assert parse_query("python async") == And(Term("python"), Term("async"))
 
 
 def test_parentheses_and_or():
@@ -69,7 +65,6 @@ def test_evaluate_boolean():
     assert parse_query("python OR java").evaluate(index) == {0, 1}
 
 
-
 def test_phrase_search_uses_positions():
     index = Index(
         {
@@ -89,4 +84,3 @@ def test_phrase_search_uses_positions():
     )
 
     assert parse_query('"event loop"').evaluate(index) == {0}
-

@@ -1,4 +1,3 @@
-
 from findex.snippets import make_snippet
 
 

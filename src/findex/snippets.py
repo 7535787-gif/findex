@@ -1,4 +1,3 @@
-
 import re
 from pathlib import Path
 
@@ -18,18 +17,14 @@ def make_snippet(
         return "[Document text unavailable]"
 
     terms = {
-        term
-        for query_term in query_terms
-        for term in tokenize(query_term)
-        if term
+        term for query_term in query_terms for term in tokenize(query_term) if term
     }
 
     if not text or not terms:
         return text[: 2 * context_chars]
 
     alternatives = "|".join(
-        re.escape(term)
-        for term in sorted(terms, key=len, reverse=True)
+        re.escape(term) for term in sorted(terms, key=len, reverse=True)
     )
 
     # Unicode-aware boundaries: do not match a term inside a larger word.
