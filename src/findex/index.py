@@ -73,7 +73,9 @@ def merge_partials(
     for partial_index, partial_documents in partials:
         merged_docs = documents.keys() & partial_documents.keys()
         if merged_docs:
-            raise ValueError(f"Duplicate document IDs in partial indexes: {merged_docs}")
+            raise ValueError(
+                f"Duplicate document IDs in partial indexes: {merged_docs}"
+            )
         documents.update(partial_documents)
         for term, postings in partial_index.items():
             merged[term].extend(postings)
@@ -115,7 +117,7 @@ def build_index(
     shard_count = min(workers if executor != "serial" else 1, len(paths))
     chunk_size = (len(paths) + shard_count - 1) // shard_count
     chunks = [
-        tuple(str(path) for path in paths[i:i + chunk_size])
+        tuple(str(path) for path in paths[i : i + chunk_size])
         for i in range(0, len(paths), chunk_size)
     ]
     tasks = [

@@ -1,4 +1,3 @@
-
 """Plot indexing benchmark speedup."""
 
 from __future__ import annotations
@@ -11,9 +10,7 @@ import matplotlib.pyplot as plt
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Plot indexing benchmark speedup."
-    )
+    parser = argparse.ArgumentParser(description="Plot indexing benchmark speedup.")
     parser.add_argument(
         "--input",
         type=Path,
@@ -33,10 +30,7 @@ def main() -> None:
     ) as csv_file:
         rows = list(csv.DictReader(csv_file))
 
-    serial_rows = [
-        row for row in rows
-        if row["executor"] == "serial"
-    ]
+    serial_rows = [row for row in rows if row["executor"] == "serial"]
     if not serial_rows:
         parser.error("CSV does not contain serial baseline")
 
@@ -46,10 +40,7 @@ def main() -> None:
 
     for backend in ("threads", "processes"):
         backend_rows = sorted(
-            (
-                row for row in rows
-                if row["executor"] == backend
-            ),
+            (row for row in rows if row["executor"] == backend),
             key=lambda row: int(row["workers"]),
         )
 
@@ -57,10 +48,7 @@ def main() -> None:
             continue
 
         workers = [int(row["workers"]) for row in backend_rows]
-        speedups = [
-            baseline / float(row["wall_s"])
-            for row in backend_rows
-        ]
+        speedups = [baseline / float(row["wall_s"]) for row in backend_rows]
 
         ax.plot(
             workers,
@@ -69,10 +57,7 @@ def main() -> None:
             label=backend,
         )
 
-    max_workers = max(
-        int(row["workers"])
-        for row in rows
-    )
+    max_workers = max(int(row["workers"]) for row in rows)
     ideal_workers = list(range(1, max_workers + 1))
 
     ax.plot(

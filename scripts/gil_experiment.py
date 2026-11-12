@@ -1,4 +1,5 @@
 """Compare CPU-bound threads with the interpreter's GIL state."""
+
 from __future__ import annotations
 
 import sys

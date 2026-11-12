@@ -20,7 +20,9 @@ from findex.tokenize import tokenize
 def _snapshot(index, documents):
     return (
         {
-            term: [(posting.doc_id, posting.tf, posting.positions) for posting in postings]
+            term: [
+                (posting.doc_id, posting.tf, posting.positions) for posting in postings
+            ]
             for term, postings in sorted(index.items())
         },
         {
@@ -91,9 +93,7 @@ def test_threaded_build_is_deterministic_across_repeated_runs(
 ) -> None:
     expected = _snapshot(*build_index(tiny_corpus, executor="serial"))
     for _ in range(10):
-        actual = _snapshot(
-            *build_index(tiny_corpus, workers=4, executor="threads")
-        )
+        actual = _snapshot(*build_index(tiny_corpus, workers=4, executor="threads"))
         assert actual == expected
 
 

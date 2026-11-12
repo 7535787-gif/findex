@@ -64,13 +64,8 @@ def main() -> None:
                     *build_index(corpus, workers=workers, executor="threads")
                 )
                 if actual != expected:
-                    raise SystemExit(
-                        f"Mismatch: workers={workers}, run={repetition}"
-                    )
-                print(
-                    f"PASS: threads={workers}, run={repetition}, "
-                    f"SHA256={actual}"
-                )
+                    raise SystemExit(f"Mismatch: workers={workers}, run={repetition}")
+                print(f"PASS: threads={workers}, run={repetition}, SHA256={actual}")
 
     print("PASS: all threaded indexes matched the serial baseline")
 

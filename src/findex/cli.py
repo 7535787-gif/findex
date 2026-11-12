@@ -122,7 +122,7 @@ def index_command(
         console.print(f"[green]Index saved:[/green] {output}")
         console.print(f"Documents: {len(documents)} | Terms: {len(postings)}")
         logger.info("Index build completed")
-    except (OSError, ValueError):
+    except OSError, ValueError:
         logger.exception("Index build failed")
         raise
 

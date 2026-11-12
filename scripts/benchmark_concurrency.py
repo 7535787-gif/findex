@@ -1,4 +1,3 @@
-
 """Repeatable serial/thread/process indexing benchmark.
 
 Run:
@@ -46,12 +45,12 @@ def _sample_process(
             state["rss_peak"],
             float(process.memory_info().rss),
         )
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
+    except psutil.NoSuchProcess, psutil.AccessDenied:
         pass
 
     try:
         children = process.children(recursive=True)
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
+    except psutil.NoSuchProcess, psutil.AccessDenied:
         children = []
 
     for child in children:
@@ -62,7 +61,7 @@ def _sample_process(
                 child_cpu.get(child.pid, 0.0),
                 total_cpu,
             )
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
+        except psutil.NoSuchProcess, psutil.AccessDenied:
             continue
 
 
@@ -85,10 +84,7 @@ def run_once(
 
     chunk_size = (len(paths) + worker_count - 1) // worker_count
 
-    chunks = [
-        paths[i:i + chunk_size]
-        for i in range(0, len(paths), chunk_size)
-    ]
+    chunks = [paths[i : i + chunk_size] for i in range(0, len(paths), chunk_size)]
 
     tasks = [
         (
@@ -127,10 +123,7 @@ def run_once(
 
     try:
         if executor == "serial":
-            partials = [
-                build_partial(*task)
-                for task in tasks
-            ]
+            partials = [build_partial(*task) for task in tasks]
 
         elif executor == "threads":
             with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -205,18 +198,12 @@ def main() -> None:
     if not args.corpus.is_dir():
         parser.error(f"Corpus directory does not exist: {args.corpus}")
 
-    executors = [
-        item.strip()
-        for item in args.executors.split(",")
-        if item.strip()
-    ]
+    executors = [item.strip() for item in args.executors.split(",") if item.strip()]
 
     allowed = {"serial", "threads", "processes"}
 
     if not executors or any(item not in allowed for item in executors):
-        parser.error(
-            "--executors must contain serial, threads and/or processes"
-        )
+        parser.error("--executors must contain serial, threads and/or processes")
 
     if len(set(executors)) != len(executors):
         parser.error("--executors must not contain duplicates")
@@ -241,10 +228,7 @@ def main() -> None:
         if backend == "serial":
             configurations.append(("serial", 1))
         else:
-            configurations.extend(
-                (backend, workers)
-                for workers in worker_counts
-            )
+            configurations.extend((backend, workers) for workers in worker_counts)
 
     rows: list[dict[str, object]] = []
     baseline: float | None = None
@@ -252,15 +236,10 @@ def main() -> None:
     for backend, workers in configurations:
         print(f"Running {backend}, workers={workers}...")
 
-        samples = [
-            run_once(paths, workers, backend)
-            for _ in range(args.repeats)
-        ]
+        samples = [run_once(paths, workers, backend) for _ in range(args.repeats)]
 
         medians = {
-            key: statistics.median(
-                sample[key] for sample in samples
-            )
+            key: statistics.median(sample[key] for sample in samples)
             for key in samples[0]
         }
 
