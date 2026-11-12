@@ -1,15 +1,16 @@
 import argparse
 import logging
+import multiprocessing
 import pickle
 import time
 import tracemalloc
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from .corpus import iter_documents
 from .timing import timed
 from .tokenize import tokenize
 
@@ -31,60 +32,119 @@ class DocMeta:
     length: int
 
 
-@timed
+def build_partial(
+    file_paths: tuple[str, ...],
+    start_doc_id: int,
+    include_positions: bool = True,
+) -> tuple[dict[str, list[Posting]], dict[int, DocMeta]]:
+    """Build one independent index shard; safe to call in a spawned process."""
+    index: defaultdict[str, list[Posting]] = defaultdict(list)
+    documents: dict[int, DocMeta] = {}
+
+    for offset, raw_path in enumerate(file_paths):
+        path = Path(raw_path)
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            raise OSError(f"Worker cannot read {path}") from exc
+        tokens = list(tokenize(text))
+        counts = Counter(tokens)
+        doc_id = start_doc_id + offset
+        documents[doc_id] = DocMeta(
+            doc_id=doc_id, path=str(path), title=path.stem, length=len(tokens)
+        )
+        positions_by_term: defaultdict[str, list[int]] = defaultdict(list)
+        if include_positions:
+            for position, term in enumerate(tokens):
+                positions_by_term[term].append(position)
+        for term, frequency in counts.items():
+            index[term].append(
+                Posting(doc_id, frequency, tuple(positions_by_term[term]))
+            )
+    return dict(index), documents
+
+
+def merge_partials(
+    partials: Iterable[tuple[dict[str, list[Posting]], dict[int, DocMeta]]],
+) -> tuple[dict[str, list[Posting]], dict[int, DocMeta]]:
+    """Merge independent shards into one deterministically ordered index."""
+    merged: defaultdict[str, list[Posting]] = defaultdict(list)
+    documents: dict[int, DocMeta] = {}
+    for partial_index, partial_documents in partials:
+        merged_docs = documents.keys() & partial_documents.keys()
+        if merged_docs:
+            raise ValueError(f"Duplicate document IDs in partial indexes: {merged_docs}")
+        documents.update(partial_documents)
+        for term, postings in partial_index.items():
+            merged[term].extend(postings)
+    for postings in merged.values():
+        postings.sort(key=lambda posting: posting.doc_id)
+    return dict(merged), dict(sorted(documents.items()))
+
+
+def merge(
+    partials: Iterable[tuple[dict[str, list[Posting]], dict[int, DocMeta]]],
+) -> tuple[dict[str, list[Posting]], dict[int, DocMeta]]:
+    """Public name for merging partial indexes."""
+    return merge_partials(partials)
+
+
 def build_index(
     data_dir: Path,
     progress_callback: Callable[[int], None] | None = None,
     *,
     limit: int | None = None,
     include_positions: bool = True,
+    workers: int = 1,
+    executor: Literal["serial", "threads", "processes"] = "serial",
 ) -> tuple[dict[str, list[Posting]], dict[int, DocMeta]]:
-    """Build an inverted index, optionally limiting documents and positions.
-
-    ``include_positions`` defaults to True to preserve the behavior of existing
-    Python callers. The CLI exposes positions as an opt-in flag.
-    """
+    """Build an index serially or with thread/process workers."""
     if limit is not None and limit < 1:
         raise ValueError("Document limit must be greater than zero")
+    if workers < 1:
+        raise ValueError("Workers must be greater than zero")
+    if executor not in ("serial", "threads", "processes"):
+        raise ValueError(f"Unknown executor: {executor}")
+    paths = list(data_dir.rglob("*.txt"))
+    if limit is not None:
+        paths = paths[:limit]
+    if not paths:
+        return {}, {}
 
-    index: defaultdict[str, list[Posting]] = defaultdict(list)
-    documents: dict[int, DocMeta] = {}
+    # Each shard receives a contiguous, globally unique doc_id range.
+    shard_count = min(workers if executor != "serial" else 1, len(paths))
+    chunk_size = (len(paths) + shard_count - 1) // shard_count
+    chunks = [
+        tuple(str(path) for path in paths[i:i + chunk_size])
+        for i in range(0, len(paths), chunk_size)
+    ]
+    tasks = [
+        (chunk, sum(len(item) for item in chunks[:i]), include_positions)
+        for i, chunk in enumerate(chunks)
+    ]
 
-    for doc_id, document in enumerate(iter_documents(data_dir)):
-        if limit is not None and doc_id >= limit:
-            break
+    if executor == "serial":
+        partials = [build_partial(*task) for task in tasks]
+    else:
+        if executor == "threads":
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                partials = list(pool.map(_build_partial_task, tasks))
+        else:
+            with ProcessPoolExecutor(
+                max_workers=workers,
+                mp_context=multiprocessing.get_context("spawn"),
+            ) as pool:
+                partials = list(pool.map(_build_partial_task, tasks))
+    if progress_callback is not None:
+        progress_callback(len(paths))
+    return merge_partials(partials)
 
-        tokens = list(tokenize(document.text))
-        counts = Counter(tokens)
-        length = len(tokens)
 
-        documents[doc_id] = DocMeta(
-            doc_id=doc_id,
-            path=str(document.path),
-            title=document.path.stem,
-            length=length,
-        )
-        if progress_callback is not None:
-            progress_callback(doc_id + 1)
-
-        positions_by_term: defaultdict[str, list[int]] = defaultdict(list)
-        if include_positions:
-            for position, term in enumerate(tokens):
-                positions_by_term[term].append(position)
-
-        for term, frequency in counts.items():
-            index[term].append(
-                Posting(
-                    doc_id=doc_id,
-                    tf=frequency,
-                    positions=tuple(positions_by_term[term]),
-                )
-            )
-
-    for postings in index.values():
-        postings.sort(key=lambda posting: posting.doc_id)
-
-    return dict(index), documents
+def _build_partial_task(
+    task: tuple[tuple[str, ...], int, bool],
+) -> tuple[dict[str, list[Posting]], dict[int, DocMeta]]:
+    """Top-level adapter keeps the submitted callable spawn-picklable."""
+    return build_partial(*task)
 
 
 @timed

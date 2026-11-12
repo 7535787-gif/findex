@@ -86,6 +86,11 @@ def index_command(
     limit: Annotated[
         int | None, typer.Option("--limit", min=1, help="Maximum number of documents")
     ] = None,
+    workers: Annotated[int, typer.Option("--workers", min=1)] = 1,
+    executor: Annotated[
+        Literal["serial", "threads", "processes"],
+        typer.Option("--executor", help="Execution backend"),
+    ] = "serial",
 ) -> None:
     """Build and save an inverted index."""
     if not corpus.is_dir():
@@ -110,13 +115,16 @@ def index_command(
                 ),
                 limit=limit,
                 include_positions=positions,
+                workers=workers,
+                executor=executor,
             )
         save_index(postings, documents, output)
         console.print(f"[green]Index saved:[/green] {output}")
         console.print(f"Documents: {len(documents)} | Terms: {len(postings)}")
         logger.info("Index build completed")
-    except (OSError, ValueError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
+    except (OSError, ValueError):
+        logger.exception("Index build failed")
+        raise
 
 
 @app.command("search")
