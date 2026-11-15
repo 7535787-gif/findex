@@ -22,3 +22,9 @@ result.json
 .hypothesis/
 .coverage
 htmlcov/
+# Lab 6 crawler output
+crawl.jsonl
+crawl-*.jsonl
+crawl.log
+crawler_benchmark.csv
+crawl-index.bin

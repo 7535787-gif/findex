@@ -45,12 +45,12 @@ def _sample_process(
             state["rss_peak"],
             float(process.memory_info().rss),
         )
-    except psutil.NoSuchProcess, psutil.AccessDenied:
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
         pass
 
     try:
         children = process.children(recursive=True)
-    except psutil.NoSuchProcess, psutil.AccessDenied:
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
         children = []
 
     for child in children:
@@ -61,7 +61,7 @@ def _sample_process(
                 child_cpu.get(child.pid, 0.0),
                 total_cpu,
             )
-        except psutil.NoSuchProcess, psutil.AccessDenied:
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
 

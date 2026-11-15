@@ -1,0 +1,4 @@
+concurrency,wall_s,pages,pages_per_second,errors,peak_rss_mb,per_host,host_delay_s,output
+1,1.706,200,117.199,0,40.41,20,0.0,crawl-1.jsonl
+5,1.257,200,159.154,0,41.04,20,0.0,crawl-5.jsonl
+20,1.085,200,184.321,0,42.45,20,0.0,crawl-20.jsonl

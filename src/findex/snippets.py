@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 
@@ -8,12 +9,20 @@ def make_snippet(
     document_path: str | Path,
     query_terms: list[str],
     context_chars: int = 80,
+    *,
+    line_offset: int | None = None,
 ) -> str:
     path = Path(document_path)
 
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
+        if line_offset is None:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        else:
+            with path.open("rb") as source:
+                source.seek(line_offset)
+                record = json.loads(source.readline().decode("utf-8"))
+            text = str(record.get("text", ""))
+    except (OSError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
         return "[Document text unavailable]"
 
     terms = {

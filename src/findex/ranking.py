@@ -88,7 +88,11 @@ def search(
 
     for doc_id, score in scores.items():
         document = index.documents[doc_id]
-        snippet = make_snippet(document.path, normalized_terms)
+        snippet = make_snippet(
+            document.content_path or document.path,
+            normalized_terms,
+            line_offset=document.line_offset,
+        )
 
         results.append(
             SearchResult(

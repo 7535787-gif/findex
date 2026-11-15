@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from .corpus import iter_documents
 from .timing import timed
 from .tokenize import tokenize
 
@@ -30,6 +31,28 @@ class DocMeta:
     path: str
     title: str
     length: int
+    content_path: str | None = None
+    line_offset: int | None = None
+
+    def __getstate__(self) -> tuple[object, ...]:
+        return (
+            self.doc_id,
+            self.path,
+            self.title,
+            self.length,
+            self.content_path,
+            self.line_offset,
+        )
+
+    def __setstate__(self, state: tuple[object, ...] | list[object]) -> None:
+        values = list(state)
+        values.extend([None] * (6 - len(values)))
+        object.__setattr__(self, "doc_id", values[0])
+        object.__setattr__(self, "path", values[1])
+        object.__setattr__(self, "title", values[2])
+        object.__setattr__(self, "length", values[3])
+        object.__setattr__(self, "content_path", values[4])
+        object.__setattr__(self, "line_offset", values[5])
 
 
 def build_partial(
@@ -103,6 +126,17 @@ def build_index(
     """Build an index serially or with thread/process workers."""
     if limit is not None and limit < 1:
         raise ValueError("Document limit must be greater than zero")
+    if data_dir.is_file() and data_dir.suffix.lower() == ".jsonl":
+        if executor != "serial" or workers != 1:
+            raise ValueError(
+                "JSONL crawling output is indexed in streaming serial mode"
+            )
+        return build_index_from_jsonl(
+            data_dir,
+            progress_callback=progress_callback,
+            limit=limit,
+            include_positions=include_positions,
+        )
     if workers < 1:
         raise ValueError("Workers must be greater than zero")
     if executor not in ("serial", "threads", "processes"):
@@ -142,6 +176,42 @@ def build_index(
     return merge_partials(partials)
 
 
+def build_index_from_jsonl(
+    jsonl_path: Path,
+    progress_callback: Callable[[int], None] | None = None,
+    *,
+    limit: int | None = None,
+    include_positions: bool = True,
+) -> tuple[dict[str, list[Posting]], dict[int, DocMeta]]:
+    """Build an index lazily from crawler JSONL without loading all pages first."""
+    index: defaultdict[str, list[Posting]] = defaultdict(list)
+    documents: dict[int, DocMeta] = {}
+    for doc_id, document in enumerate(iter_documents(jsonl_path)):
+        if limit is not None and doc_id >= limit:
+            break
+        tokens = list(tokenize(document.text))
+        counts = Counter(tokens)
+        documents[doc_id] = DocMeta(
+            doc_id=doc_id,
+            path=document.doc_id,
+            title=document.title or document.doc_id,
+            length=len(tokens),
+            content_path=str(jsonl_path),
+            line_offset=document.offset,
+        )
+        positions_by_term: defaultdict[str, list[int]] = defaultdict(list)
+        if include_positions:
+            for position, term in enumerate(tokens):
+                positions_by_term[term].append(position)
+        for term, frequency in counts.items():
+            index[term].append(
+                Posting(doc_id, frequency, tuple(positions_by_term[term]))
+            )
+        if progress_callback is not None:
+            progress_callback(doc_id + 1)
+    return dict(index), documents
+
+
 def _build_partial_task(
     task: tuple[tuple[str, ...], int, bool],
 ) -> tuple[dict[str, list[Posting]], dict[int, DocMeta]]:
@@ -169,6 +239,8 @@ def save_index(
                 document.path,
                 document.title,
                 document.length,
+                document.content_path,
+                document.line_offset,
             )
             for doc_id, document in documents.items()
         },
@@ -219,8 +291,10 @@ def load_index(
             path=path,
             title=title,
             length=length,
+            content_path=extra[0] if len(extra) > 0 else None,
+            line_offset=extra[1] if len(extra) > 1 else None,
         )
-        for doc_id, (path, title, length) in data["documents"].items()
+        for doc_id, (path, title, length, *extra) in data["documents"].items()
     }
 
     elapsed = time.perf_counter() - start

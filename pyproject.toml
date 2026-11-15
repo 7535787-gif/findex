@@ -9,6 +9,7 @@ dependencies = [
     "rich>=13",
     "psutil>=7.2.2",
     "matplotlib>=3.11.2",
+    "httpx>=0.27",
 ]
 
 [project.scripts]
@@ -34,7 +35,7 @@ markers = ["slow: tests that take more than one second"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py314"
+target-version = "py313"
 
 [tool.pyright]
 typeCheckingMode = "strict"

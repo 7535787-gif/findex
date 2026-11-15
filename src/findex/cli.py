@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import queue
+from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
+import httpx
 import typer
 from rich.console import Console
+from rich.live import Live
 from rich.progress import (
     BarColumn,
     Progress,
@@ -18,6 +24,7 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from .crawler import AsyncCrawler, CrawlStats, write_jsonl_page
 from .index import build_index, save_index
 from .index_model import Index
 from .ranking import BM25, Scorer, TfIdf
@@ -75,7 +82,9 @@ def main(
 
 @app.command("index")
 def index_command(
-    corpus: Annotated[Path, typer.Argument(help="Directory containing .txt files")],
+    corpus: Annotated[
+        Path, typer.Argument(help="Directory of .txt files or crawler JSONL file")
+    ],
     output: Annotated[
         Path, typer.Option("--out", "-o", help="Output index file")
     ] = Path("index.bin"),
@@ -93,10 +102,18 @@ def index_command(
     ] = "serial",
 ) -> None:
     """Build and save an inverted index."""
-    if not corpus.is_dir():
-        raise typer.BadParameter(f"Corpus directory does not exist: {corpus}")
+    is_jsonl = corpus.is_file() and corpus.suffix.lower() == ".jsonl"
+    if not corpus.is_dir() and not is_jsonl:
+        raise typer.BadParameter(
+            f"Corpus directory or crawler .jsonl file does not exist: {corpus}"
+        )
     try:
-        total = sum(1 for _ in corpus.rglob("*.txt"))
+        if is_jsonl:
+            from .corpus import iter_documents
+
+            total = sum(1 for _ in iter_documents(corpus))
+        else:
+            total = sum(1 for _ in corpus.rglob("*.txt"))
         if limit is not None:
             total = min(total, limit)
         with Progress(
@@ -122,7 +139,7 @@ def index_command(
         console.print(f"[green]Index saved:[/green] {output}")
         console.print(f"Documents: {len(documents)} | Terms: {len(postings)}")
         logger.info("Index build completed")
-    except OSError, ValueError:
+    except (OSError, ValueError):
         logger.exception("Index build failed")
         raise
 
@@ -201,6 +218,125 @@ def stats_command(
         console.print(table)
     except (OSError, ValueError, KeyError) as exc:
         raise typer.BadParameter(str(exc)) from exc
+
+
+@app.command("crawl")
+def crawl_command(
+    start_url: Annotated[
+        str,
+        typer.Argument(
+            help="Starting URL; crawl only sites you are authorized to access"
+        ),
+    ],
+    contact: Annotated[
+        str,
+        typer.Option(
+            "--contact",
+            help="Contact email included in the crawler User-Agent",
+        ),
+    ],
+    max_pages: Annotated[
+        int,
+        typer.Option("--max-pages", min=1, help="Maximum URLs scheduled for fetching"),
+    ] = 200,
+    concurrency: Annotated[
+        int,
+        typer.Option("--concurrency", min=1, help="Global concurrent requests"),
+    ] = 5,
+    per_host: Annotated[
+        int,
+        typer.Option("--per-host", min=1, help="Concurrent requests per host"),
+    ] = 2,
+    delay: Annotated[
+        float,
+        typer.Option(
+            "--delay", min=0.0, help="Minimum seconds between requests to the same host"
+        ),
+    ] = 0.25,
+    timeout: Annotated[float, typer.Option("--timeout", min=0.1)] = 10.0,
+    max_depth: Annotated[int, typer.Option("--max-depth", min=0)] = 5,
+    output: Annotated[
+        Path, typer.Option("--out", "-o", help="Streaming JSONL output file")
+    ] = Path("crawl.jsonl"),
+    asyncio_debug: Annotated[
+        bool, typer.Option("--asyncio-debug", help="Enable asyncio debug mode")
+    ] = False,
+) -> None:
+    """Crawl an authorized website politely and stream pages to JSONL."""
+    if "@" not in contact or contact.startswith("@") or contact.endswith("@"):
+        raise typer.BadParameter("--contact must be a valid contact email address")
+    user_agent = f"findex-lab6/1.0 (+mailto:{contact})"
+    crawl_logger = logging.getLogger("findex.crawl")
+    file_handler = logging.FileHandler("crawl.log", encoding="utf-8")
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    )
+    log_queue: queue.SimpleQueue[logging.LogRecord] = queue.SimpleQueue()
+    queue_handler = QueueHandler(log_queue)
+    log_listener = QueueListener(log_queue, file_handler, respect_handler_level=True)
+    crawl_logger.addHandler(queue_handler)
+    crawl_logger.setLevel(logging.INFO)
+    log_listener.start()
+    stats = CrawlStats()
+
+    def render_stats(current: CrawlStats) -> Table:
+        table = Table(title="findex async crawler")
+        table.add_column("Metric")
+        table.add_column("Value", justify="right")
+        table.add_row("Pages collected", str(current.pages))
+        table.add_row("Pages / second", f"{current.pages_per_second:.2f}")
+        table.add_row("Requests in flight", str(current.requests_in_flight))
+        table.add_row("Errors", str(current.errors))
+        table.add_row("Queue depth", str(current.queue_depth))
+        return table
+
+    async def run(live: Live) -> None:
+        transport = httpx.AsyncHTTPTransport(retries=0)
+        async with httpx.AsyncClient(
+            transport=transport,
+            follow_redirects=False,
+            max_redirects=10,
+            headers={"Accept": "text/html,application/xhtml+xml"},
+        ) as client:
+            start_host = (urlsplit(start_url).hostname or "").lower()
+            if not start_host:
+                raise ValueError("Start URL must contain a valid hostname")
+            allowed_domains = {start_host.removeprefix("www.")}
+
+            crawler = AsyncCrawler(
+                client,
+                user_agent=user_agent,
+                concurrency=concurrency,
+                per_host=per_host,
+                host_delay=delay,
+                timeout=timeout,
+                stats=stats,
+                on_stats=lambda current: live.update(render_stats(current)),
+                allowed_domains=allowed_domains,
+            )
+            stream = await asyncio.to_thread(
+                output.open, "w", encoding="utf-8", newline="\n"
+            )
+            try:
+                async for page in crawler.crawl(
+                    start_url, max_pages=max_pages, max_depth=max_depth
+                ):
+                    await asyncio.to_thread(write_jsonl_page, stream, page)
+                    await asyncio.to_thread(stream.flush)
+            finally:
+                await asyncio.to_thread(stream.close)
+
+    try:
+        with Live(render_stats(stats), console=console, refresh_per_second=4) as live:
+            asyncio.run(run(live), debug=asyncio_debug)
+        console.print(f"[green]Crawl saved:[/green] {output}")
+        console.print(f"Pages: {stats.pages} | Errors: {stats.errors} | Log: crawl.log")
+    except (OSError, ValueError, httpx.HTTPError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    finally:
+        crawl_logger.removeHandler(queue_handler)
+        log_listener.stop()
+        file_handler.close()
 
 
 if __name__ == "__main__":
