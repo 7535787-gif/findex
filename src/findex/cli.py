@@ -339,5 +339,36 @@ def crawl_command(
         file_handler.close()
 
 
+@app.command("serve")
+def serve_command(
+    port: Annotated[
+        int | None, typer.Option("--port", min=1, max=65535, help="HTTP port")
+    ] = None,
+    workers: Annotated[
+        int, typer.Option("--workers", min=1, help="Uvicorn worker processes")
+    ] = 1,
+) -> None:
+    """Run the FastAPI search service with Uvicorn."""
+    import uvicorn
+
+    from .web.config import Settings
+
+    settings = Settings()
+    selected_port = port if port is not None else settings.port
+    logger.info(
+        "Starting findex web service on 0.0.0.0:%d with %d worker(s)",
+        selected_port,
+        workers,
+    )
+    uvicorn.run(
+        "findex.web:app",
+        host="0.0.0.0",
+        port=selected_port,
+        workers=workers,
+        log_level=settings.log_level.lower(),
+        access_log=True,
+    )
+
+
 if __name__ == "__main__":
     app()

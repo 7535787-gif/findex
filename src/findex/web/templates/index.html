@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>findex — пошук</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">find<span>ex</span></a>
+    <nav><a href="/docs">API docs</a><a href="/stats">Статистика API</a></nav>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow">FULL-TEXT SEARCH ENGINE</div>
+      <h1>Знайди потрібне<br><span>серед документів.</span></h1>
+      <p>Пошук на основі інвертованого індексу, BM25 та TF-IDF.</p>
+      <form class="search-form" action="/" method="get">
+        <label class="sr-only" for="q">Пошуковий запит</label>
+        <input id="q" name="q" type="search" value="{{ query }}" placeholder="Наприклад: python asyncio" maxlength="200" required>
+        <input type="hidden" name="k" value="{{ k }}">
+        <input type="hidden" name="scorer" value="{{ scorer }}">
+        <button type="submit">Шукати <span>→</span></button>
+      </form>
+      <div class="controls">
+        <span>Алгоритм</span>
+        <a class="{% if scorer == 'bm25' %}selected{% endif %}" href="/?q={{ query|urlencode }}&k={{ k }}&scorer=bm25">BM25</a>
+        <a class="{% if scorer == 'tfidf' %}selected{% endif %}" href="/?q={{ query|urlencode }}&k={{ k }}&scorer=tfidf">TF-IDF</a>
+      </div>
+      {% if not index_loaded %}
+        <div class="notice">Індекс ще не завантажений. Налаштуйте INDEX_PATH та перезапустіть сервіс.</div>
+      {% endif %}
+    </section>
+
+    {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+    {% if response %}
+      <section class="results">
+        <div class="results-head">
+          <div><div class="eyebrow">РЕЗУЛЬТАТИ ПОШУКУ</div><h2>«{{ response.query }}»</h2></div>
+          <div class="result-count">{{ response.total }} документів · {{ "%.2f"|format(response.took_ms) }} мс</div>
+        </div>
+        {% for item in response.results %}
+          <article class="result-card">
+            <div class="result-meta"><span>DOC {{ item.doc_id }}</span><span class="score">score {{ "%.4f"|format(item.score) }}</span></div>
+            <h3><a href="/doc/{{ item.doc_id }}">{{ item.title }}</a></h3>
+            <p class="snippet">{{ item.snippet|highlight }}</p>
+          </article>
+        {% else %}
+          <div class="empty">За цим запитом нічого не знайдено.</div>
+        {% endfor %}
+        {% if response.pages > 1 %}
+          <div class="pagination">
+            {% if response.page > 1 %}<a href="/?q={{ query|urlencode }}&k={{ k }}&scorer={{ scorer }}&page={{ response.page - 1 }}">← Назад</a>{% else %}<span></span>{% endif %}
+            <span>Сторінка {{ response.page }} з {{ response.pages }}</span>
+            {% if response.page < response.pages %}<a href="/?q={{ query|urlencode }}&k={{ k }}&scorer={{ scorer }}&page={{ response.page + 1 }}">Далі →</a>{% else %}<span></span>{% endif %}
+          </div>
+        {% endif %}
+      </section>
+    {% elif query and index_loaded %}
+      <section class="empty">За цим запитом нічого не знайдено.</section>
+    {% endif %}
+    <footer><span>findex · навчальний пошуковий рушій</span><span>FastAPI · Pydantic · ASGI</span></footer>
+  </main>
+</body>
+</html>

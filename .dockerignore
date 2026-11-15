@@ -1,0 +1,15 @@
+.git
+.venv
+.venv313t
+.pytest_cache
+.ruff_cache
+.hypothesis
+__pycache__
+*.py[cod]
+*.bin
+*.jsonl
+*.log
+tests
+benchmark-site
+test-site
+.env

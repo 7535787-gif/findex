@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ document.title }} — findex</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/">find<span>ex</span></a><nav><a href="/">← До пошуку</a><a href="/docs">API docs</a></nav></header>
+  <main class="shell document-shell">
+    <div class="eyebrow">DOCUMENT {{ document.doc_id }}</div>
+    <h1 class="document-title">{{ document.title }}</h1>
+    <p class="document-path">{{ document.path }}</p>
+    <article class="document-content">{{ content }}</article>
+    <a class="back-link" href="/">← Повернутися до пошуку</a>
+    <footer><span>findex · перегляд документа</span><span>FastAPI · Jinja2</span></footer>
+  </main>
+</body>
+</html>
