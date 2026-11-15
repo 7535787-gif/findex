@@ -151,6 +151,7 @@ def create_app(
                     title=item.title,
                     score=item.score,
                     snippet=item.snippet,
+                    match_type=item.match_type,
                 )
                 for item in page_results
             ],

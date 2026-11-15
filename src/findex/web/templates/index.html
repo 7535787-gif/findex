@@ -42,7 +42,11 @@
         </div>
         {% for item in response.results %}
           <article class="result-card">
-            <div class="result-meta"><span>DOC {{ item.doc_id }}</span><span class="score">score {{ "%.4f"|format(item.score) }}</span></div>
+            <div class="result-meta">
+              <span>DOC {{ item.doc_id }}</span>
+              <span>{% if item.match_type == "phrase" %}ТОЧНА ФРАЗА{% elif item.match_type == "partial" %}ЧАСТКОВИЙ ЗБІГ{% else %}ЗБІГ ЗА СЛОВОМ{% endif %}</span>
+              <span class="score">score {{ "%.4f"|format(item.score) }}</span>
+            </div>
             <h3><a href="/doc/{{ item.doc_id }}">{{ item.title }}</a></h3>
             <p class="snippet">{{ item.snippet|highlight }}</p>
           </article>

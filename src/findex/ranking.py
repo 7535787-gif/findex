@@ -16,6 +16,7 @@ class SearchResult:
     title: str
     path: str
     snippet: str = ""
+    match_type: str = "term"
 
 
 class Scorer(Protocol):
@@ -67,6 +68,9 @@ def search(
     query_terms: list[str],
     scorer: Scorer,
     top_k: int = 5,
+    *,
+    phrase_terms: list[str] | None = None,
+    phrase_doc_ids: set[int] | None = None,
 ) -> list[SearchResult]:
     """Ранжує документи й додає snippets до результатів."""
     if top_k <= 0:
@@ -92,6 +96,7 @@ def search(
             document.content_path or document.path,
             normalized_terms,
             line_offset=document.line_offset,
+            phrase_terms=phrase_terms,
         )
 
         results.append(
@@ -101,6 +106,11 @@ def search(
                 title=document.title,
                 path=document.path,
                 snippet=snippet,
+                match_type=(
+                    "phrase"
+                    if phrase_doc_ids is not None and doc_id in phrase_doc_ids
+                    else ("partial" if phrase_terms is not None else "term")
+                ),
             )
         )
 

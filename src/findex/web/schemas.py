@@ -17,6 +17,7 @@ class SearchResultResponse(BaseModel):
     title: str
     score: float
     snippet: str
+    match_type: str = "term"
 
 
 class SearchResponse(BaseModel):
