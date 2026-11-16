@@ -36,7 +36,9 @@ def run_search(
         return []
 
     scorer = BM25() if scorer_name == "bm25" else TfIdf()
-    phrase_doc_ids = Phrase(query).evaluate(index) if len(terms) > 1 else set()
+    phrase_doc_ids: set[int] = (
+        Phrase(query).evaluate(index) if len(terms) > 1 else set()
+    )
 
     results = ranked_search(
         index,

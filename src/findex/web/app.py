@@ -7,7 +7,7 @@ import logging
 import re
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -53,7 +53,7 @@ def create_app(
         raise ValueError("search_mode must be 'def' or 'async'")
 
     @asynccontextmanager
-    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(application: FastAPI) -> AsyncGenerator[None]:
         application.state.started_at = time.perf_counter()
         application.state.index = None
         if load_on_startup and runtime_settings.index_path is not None:
@@ -158,7 +158,7 @@ def create_app(
     if mode == "def":
 
         @application.get("/search", response_model=SearchResponse)
-        def search(
+        def search_sync(
             q: str = Query(..., min_length=1, max_length=200),
             k: int = Query(10, ge=1, le=100),
             scorer: str = Query("bm25", pattern="^(bm25|tfidf)$"),
@@ -170,7 +170,7 @@ def create_app(
     else:
 
         @application.get("/search", response_model=SearchResponse)
-        async def search(
+        async def search_async(
             q: str = Query(..., min_length=1, max_length=200),
             k: int = Query(10, ge=1, le=100),
             scorer: str = Query("bm25", pattern="^(bm25|tfidf)$"),

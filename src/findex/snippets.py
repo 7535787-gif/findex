@@ -40,26 +40,30 @@ def make_snippet(
     phrase_pattern = None
     if len(phrase) > 1:
         # A phrase is a sequence of tokens; punctuation/markup between words
-        # is allowed (for example, LaTeX commands separated by backslashes).
+        # is allowed.
         phrase_pattern = re.compile(
             r"(?<!\w)" + r"[\W_]+".join(re.escape(term) for term in phrase) + r"(?!\w)",
             re.IGNORECASE,
         )
 
-    phrase_match = phrase_pattern.search(text) if phrase_pattern else None
-    if phrase_match:
-        match_start, match_end = phrase_match.span()
-        start = max(0, match_start - context_chars)
-        end = min(len(text), match_end + context_chars)
-        snippet = text[start:end]
-        if start:
-            snippet = "..." + snippet
-        if end < len(text):
-            snippet += "..."
-        # Highlight the entire phrase as one match, including separators.
-        return phrase_pattern.sub(
-            lambda found: f"**{found.group(0)}**", snippet, count=1
-        )
+        phrase_match = phrase_pattern.search(text)
+
+        if phrase_match is not None:
+            match_start, match_end = phrase_match.span()
+            start = max(0, match_start - context_chars)
+            end = min(len(text), match_end + context_chars)
+            snippet = text[start:end]
+
+            if start:
+                snippet = "..." + snippet
+            if end < len(text):
+                snippet += "..."
+
+            return phrase_pattern.sub(
+                lambda found: f"**{found.group(0)}**",
+                snippet,
+                count=1,
+            )
 
     alternatives = "|".join(
         re.escape(term) for term in sorted(set(terms), key=len, reverse=True)
