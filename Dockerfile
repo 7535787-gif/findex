@@ -5,7 +5,7 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
-COPY data ./data
+COPY deploy-data ./data
 RUN uv sync --no-dev --no-editable
 RUN uv run findex index data --out /app/data-index.bin --positions
 
