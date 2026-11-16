@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.14
       - name: Install dependencies
-        run: uv sync --locked --dev
+        run: uv sync --dev
       - name: Ruff
         run: uv run ruff check .
       - name: Ruff format
@@ -24,6 +24,8 @@ jobs:
         run: uv run pyright
       - name: Pytest
         run: uv run pytest -q
+      - name: Pytest benchmarks
+        run: uv run pytest tests/test_benchmarks.py --benchmark-only --benchmark-verbose
 
   release:
     needs: checks

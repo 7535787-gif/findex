@@ -173,3 +173,17 @@ def test_document_html_page(client: TestClient) -> None:
     assert response.status_code == 200
     assert "Python guide" in response.text
     assert "Python makes search useful" in response.text
+
+
+
+def test_search_mode_is_returned(client: TestClient) -> None:
+    response = client.get("/search", params={"q": "python", "mode": "tfidf"})
+    assert response.status_code == 200
+    assert response.json()["mode"] == "tfidf"
+
+
+def test_ui_exposes_semantic_and_hybrid_modes(client: TestClient) -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert 'value="semantic"' in response.text
+    assert 'value="hybrid"' in response.text

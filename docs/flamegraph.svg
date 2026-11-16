@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="276" viewBox="0 0 1500 276">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20" y="28" font-family="Arial" font-size="18" font-weight="bold">findex index — cProfile flame view</text>
+<text x="20" y="50" font-family="Arial" font-size="11" fill="#555">cProfile cumulative-call tree; width is relative cumulative time, not a py-spy sample count</text>
+<rect x="0.0" y="65" width="1499.0" height="24" rx="2" fill="#d7e8ff" stroke="#536273" stroke-width=".6"><title>profile_lab8.py:42 &lt;lambda&gt; — 23.521s cumulative</title></rect>
+<text x="4.0" y="81" font-family="Arial" font-size="10" fill="#17202a">profile_lab8.py:42 &lt;lambda&gt;</text>
+<rect x="0.0" y="93" width="1499.0" height="24" rx="2" fill="#b8d9f7" stroke="#536273" stroke-width=".6"><title>index.py:119 build_index — 23.421s cumulative</title></rect>
+<text x="4.0" y="109" font-family="Arial" font-size="10" fill="#17202a">index.py:119 build_index</text>
+<rect x="0.0" y="121" width="1367.8" height="24" rx="2" fill="#a8dfc8" stroke="#536273" stroke-width=".6"><title>index.py:60 build_partial — 21.335s cumulative</title></rect>
+<text x="4.0" y="137" font-family="Arial" font-size="10" fill="#17202a">index.py:60 build_partial</text>
+<rect x="0.0" y="149" width="868.2" height="24" rx="2" fill="#f7d69a" stroke="#536273" stroke-width=".6"><title>tokenize.py:8 tokenize — 8.158s cumulative</title></rect>
+<text x="4.0" y="165" font-family="Arial" font-size="10" fill="#17202a">tokenize.py:8 tokenize</text>
+<rect x="0.0" y="177" width="487.5" height="24" rx="2" fill="#e9c2ef" stroke="#536273" stroke-width=".6"><title>~:0 &lt;built-in method unicodedata.normalize&gt; — 2.872s cumulative</title></rect>
+<text x="4.0" y="193" font-family="Arial" font-size="10" fill="#17202a">~:0 &lt;built-in method unicodedata.normalize&gt;</text>
+<rect x="488.5" y="177" width="247.5" height="24" rx="2" fill="#e9c2ef" stroke="#536273" stroke-width=".6"><title>~:0 &lt;method &#x27;group&#x27; of &#x27;re.Match&#x27; objects&gt; — 1.461s cumulative</title></rect>
+<text x="492.5" y="193" font-family="Arial" font-size="10" fill="#17202a">~:0 &lt;method &#x27;group&#x27; of &#x27;re.Match&#x27; objects&gt;</text>
+<rect x="737.0" y="177" width="131.2" height="24" rx="2" fill="#e9c2ef" stroke="#536273" stroke-width=".6"><title>~:0 &lt;method &#x27;casefold&#x27; of &#x27;str&#x27; objects&gt; — 0.777s cumulative</title></rect>
+<text x="741.0" y="193" font-family="Arial" font-size="10" fill="#17202a">~:0 &lt;method &#x27;casefold&#x27; of &#x27;str&#x27; objects&gt;</text>
+<rect x="869.2" y="149" width="133.8" height="24" rx="2" fill="#f7d69a" stroke="#536273" stroke-width=".6"><title>_local.py:541 read_text — 1.265s cumulative</title></rect>
+<text x="873.2" y="165" font-family="Arial" font-size="10" fill="#17202a">_local.py:541 read_text</text>
+<rect x="869.2" y="177" width="133.8" height="24" rx="2" fill="#e9c2ef" stroke="#536273" stroke-width=".6"><title>_abc.py:628 read_text — 1.264s cumulative</title></rect>
+<text x="873.2" y="193" font-family="Arial" font-size="10" fill="#17202a">_abc.py:628 read_text</text>
+<rect x="869.2" y="205" width="133.8" height="24" rx="2" fill="#f0b6a8" stroke="#536273" stroke-width=".6"><title>~:0 &lt;method &#x27;read&#x27; of &#x27;_io.TextIOWrapper&#x27; objects&gt; — 1.262s cumulative</title></rect>
+<text x="873.2" y="221" font-family="Arial" font-size="10" fill="#17202a">~:0 &lt;method &#x27;read&#x27; of &#x27;_io.TextIOWrapper&#x27; objects&gt;</text>
+<rect x="869.2" y="233" width="133.8" height="24" rx="2" fill="#c9d5e8" stroke="#536273" stroke-width=".6"><title>&lt;frozen codecs&gt;:322 decode — 0.544s cumulative</title></rect>
+<text x="873.2" y="249" font-family="Arial" font-size="10" fill="#17202a">&lt;frozen codecs&gt;:322 decode</text>
+<rect x="1004.0" y="149" width="133.4" height="24" rx="2" fill="#f7d69a" stroke="#536273" stroke-width=".6"><title>__init__.py:599 __init__ — 1.261s cumulative</title></rect>
+<text x="1008.0" y="165" font-family="Arial" font-size="10" fill="#17202a">__init__.py:599 __init__</text>
+<rect x="1004.0" y="177" width="133.4" height="24" rx="2" fill="#e9c2ef" stroke="#536273" stroke-width=".6"><title>__init__.py:673 update — 1.261s cumulative</title></rect>
+<text x="1008.0" y="193" font-family="Arial" font-size="10" fill="#17202a">__init__.py:673 update</text>
+<rect x="1004.0" y="205" width="133.4" height="24" rx="2" fill="#f0b6a8" stroke="#536273" stroke-width=".6"><title>~:0 &lt;built-in method _collections._count_elements&gt; — 1.261s cumulative</title></rect>
+<text x="1008.0" y="221" font-family="Arial" font-size="10" fill="#17202a">~:0 &lt;built-in method _collections._count_elements&gt;</text>
+<rect x="1138.3" y="149" width="122.0" height="24" rx="2" fill="#f7d69a" stroke="#536273" stroke-width=".6"><title>~:0 &lt;method &#x27;append&#x27; of &#x27;list&#x27; objects&gt; — 1.154s cumulative</title></rect>
+<text x="1142.3" y="165" font-family="Arial" font-size="10" fill="#17202a">~:0 &lt;method &#x27;append&#x27; of &#x27;list&#x27; objects&gt;</text>
+<rect x="1261.3" y="149" width="106.5" height="24" rx="2" fill="#f7d69a" stroke="#536273" stroke-width=".6"><title>&lt;string&gt;:2 __init__ — 1.009s cumulative</title></rect>
+<text x="1265.3" y="165" font-family="Arial" font-size="10" fill="#17202a">&lt;string&gt;:2 __init__</text>
+<rect x="1368.8" y="121" width="130.2" height="24" rx="2" fill="#a8dfc8" stroke="#536273" stroke-width=".6"><title>index.py:92 merge_partials — 2.045s cumulative</title></rect>
+<text x="1372.8" y="137" font-family="Arial" font-size="10" fill="#17202a">index.py:92 merge_partials</text>
+<rect x="1368.8" y="149" width="89.9" height="24" rx="2" fill="#f7d69a" stroke="#536273" stroke-width=".6"><title>~:0 &lt;method &#x27;sort&#x27; of &#x27;list&#x27; objects&gt; — 0.269s cumulative</title></rect>
+<text x="1372.8" y="165" font-family="Arial" font-size="10" fill="#17202a">~:0 &lt;method &#x27;sort&#x27; of &#x27;list&#x27; objects&gt;</text>
+<rect x="1368.8" y="177" width="89.9" height="24" rx="2" fill="#e9c2ef" stroke="#536273" stroke-width=".6"><title>index.py:108 &lt;lambda&gt; — 0.050s cumulative</title></rect>
+<text x="1372.8" y="193" font-family="Arial" font-size="10" fill="#17202a">index.py:108 &lt;lambda&gt;</text>
+<rect x="1459.7" y="149" width="39.3" height="24" rx="2" fill="#f7d69a" stroke="#536273" stroke-width=".6"><title>~:0 &lt;method &#x27;extend&#x27; of &#x27;list&#x27; objects&gt; — 0.119s cumulative</title></rect>
+</svg>

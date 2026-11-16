@@ -7,6 +7,7 @@ class SearchRequest(BaseModel):
     q: str = Field(min_length=1, max_length=200)
     k: int = Field(default=10, ge=1, le=100)
     scorer: str = Field(default="bm25", pattern="^(bm25|tfidf)$")
+    mode: str = Field(default="bm25", pattern="^(bm25|tfidf|semantic|hybrid)$")
     page: int = Field(default=1, ge=1)
 
 
@@ -22,6 +23,7 @@ class SearchResultResponse(BaseModel):
 
 class SearchResponse(BaseModel):
     query: str
+    mode: str = "bm25"
     total: int
     page: int
     pages: int

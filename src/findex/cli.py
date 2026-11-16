@@ -28,7 +28,8 @@ from .crawler import AsyncCrawler, CrawlStats, write_jsonl_page
 from .index import build_index, save_index
 from .index_model import Index
 from .ranking import BM25, Scorer, TfIdf
-from .ranking import search as ranked_search
+from .ranking import search_numpy
+from .semantic import DEFAULT_MODEL, embed_index, hybrid_search, semantic_search
 from .tokenize import tokenize
 
 app = typer.Typer(
@@ -151,6 +152,16 @@ def search_command(
     scorer: Annotated[
         Literal["bm25", "tfidf"], typer.Option("--scorer", help="Ranking algorithm")
     ] = "bm25",
+    mode: Annotated[
+        Literal["bm25", "tfidf", "semantic", "hybrid"] | None,
+        typer.Option("--mode", help="Retrieval mode"),
+    ] = None,
+    embeddings: Annotated[
+        Path, typer.Option("--embeddings", help="Path to embeddings .npy file")
+    ] = Path("embeddings.npy"),
+    model: Annotated[
+        str, typer.Option("--model", help="Sentence-transformer model")
+    ] = DEFAULT_MODEL,
     top_k: Annotated[
         int,
         typer.Option("--k", "--top-k", min=1, max=1000, help="Number of results"),
@@ -159,14 +170,24 @@ def search_command(
         bool, typer.Option("--json", help="Write machine-readable JSON to stdout")
     ] = False,
 ) -> None:
-    """Search the index and rank matching documents."""
+    """Search using lexical, semantic, or hybrid retrieval."""
     try:
         index = _load(index_file)
-        scorer_impl: Scorer = BM25() if scorer == "bm25" else TfIdf()
         terms = list(tokenize(query))
         if not terms:
             raise ValueError("Query contains no searchable terms")
-        results = ranked_search(index, terms, scorer_impl, top_k=top_k)
+        selected_mode = mode or scorer
+        if selected_mode == "semantic":
+            results = semantic_search(
+                index, query, embeddings, model_name=model, top_k=top_k
+            )
+        elif selected_mode == "hybrid":
+            results = hybrid_search(
+                index, query, embeddings, model_name=model, top_k=top_k
+            )
+        else:
+            active_scorer: Scorer = BM25() if selected_mode == "bm25" else TfIdf()
+            results = search_numpy(index, terms, active_scorer, top_k=top_k)
         if json_output:
             for item in results:
                 payload = {
@@ -175,12 +196,14 @@ def search_command(
                     "title": item.title,
                     "path": item.path,
                     "snippet": item.snippet,
+                    "match_type": item.match_type,
                 }
                 typer.echo(json.dumps(payload, ensure_ascii=False))
             return
-        table = Table(title=f"Search results: {query}")
+        table = Table(title=f"Search results ({selected_mode}): {query}")
         table.add_column("Rank", justify="right")
         table.add_column("Score", justify="right")
+        table.add_column("Match")
         table.add_column("Document")
         table.add_column("Path")
         table.add_column("Snippet", overflow="fold")
@@ -188,6 +211,7 @@ def search_command(
             table.add_row(
                 str(rank),
                 f"{item.score:.4f}",
+                item.match_type,
                 item.title,
                 item.path,
                 item.snippet,
@@ -195,7 +219,30 @@ def search_command(
         console.print(table)
         if not results:
             console.print("[yellow]No results found.[/yellow]")
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, RuntimeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
+@app.command("embed")
+def embed_command(
+    index_file: Annotated[Path, typer.Argument(help="Path to index.bin")],
+    output: Annotated[
+        Path, typer.Option("--out", help="Output embeddings .npy file")
+    ] = Path("embeddings.npy"),
+    model: Annotated[
+        str, typer.Option("--model", help="Sentence-transformer model")
+    ] = DEFAULT_MODEL,
+    batch_size: Annotated[int, typer.Option("--batch-size", min=1)] = 64,
+) -> None:
+    """Create normalized embeddings for document chunks."""
+    try:
+        index = _load(index_file)
+        path, chunks = embed_index(
+            index, output, model_name=model, batch_size=batch_size
+        )
+        console.print(f"[green]Embeddings saved:[/green] {path}")
+        console.print(f"Chunks: {chunks}")
+    except (OSError, ValueError, RuntimeError) as exc:
         raise typer.BadParameter(str(exc)) from exc
 
 

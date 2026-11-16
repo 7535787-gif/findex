@@ -20,4 +20,6 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     port: int = Field(default=8000, ge=1, le=65535)
     search_mode: str = Field(default="def", pattern="^(def|async)$")
+    embeddings_path: Path = Path("embeddings.npy")
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     app_name: str = "findex"

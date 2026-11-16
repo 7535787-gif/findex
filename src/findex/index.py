@@ -4,6 +4,8 @@ import multiprocessing
 import pickle
 import time
 import tracemalloc
+
+import numpy as np
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -228,12 +230,24 @@ def save_index(
     start = time.perf_counter()
 
     data = {
+        "format_version": 2,
         "index": {
-            term: [
-                (posting.doc_id, posting.tf, posting.positions) for posting in postings
-            ]
-            for term, postings in index.items()
+            "doc_ids": np.fromiter(
+                (posting.doc_id for postings in index.values() for posting in postings),
+                dtype=np.int32,
+            ),
+            "tfs": np.fromiter(
+                (posting.tf for postings in index.values() for posting in postings),
+                dtype=np.int32,
+            ),
+            "offsets": {},
+            "positions": {},
         },
+        "doc_lengths": np.asarray(
+            [documents[doc_id].length for doc_id in sorted(documents)],
+            dtype=np.int32,
+        ),
+        "doc_length_ids": np.asarray(sorted(documents), dtype=np.int32),
         "documents": {
             doc_id: (
                 document.path,
@@ -245,6 +259,13 @@ def save_index(
             for doc_id, document in documents.items()
         },
     }
+
+    cursor = 0
+    for term, postings in index.items():
+        stop = cursor + len(postings)
+        data["index"]["offsets"][term] = (cursor, stop)
+        data["index"]["positions"][term] = [posting.positions for posting in postings]
+        cursor = stop
 
     with output_path.open("wb") as file:
         pickle.dump(data, file)
@@ -268,22 +289,46 @@ def load_index(
         data = pickle.load(file)
 
     index: dict[str, list[Posting]] = {}
-    for term, postings in data["index"].items():
-        restored_postings: list[Posting] = []
-
-        for item in postings:
-            doc_id, tf, *extra = item
-            positions = tuple(extra[0]) if extra else ()
-
-            restored_postings.append(
-                Posting(
-                    doc_id=doc_id,
-                    tf=tf,
-                    positions=positions,
-                )
+    index_payload = data["index"]
+    if data.get("format_version") == 2:
+        all_doc_ids = np.asarray(index_payload["doc_ids"], dtype=np.int32)
+        all_frequencies = np.asarray(index_payload["tfs"], dtype=np.int32)
+        for term, (start, stop) in index_payload["offsets"].items():
+            positions_by_posting = index_payload["positions"].get(
+                term, [()] * (stop - start)
             )
-
-        index[term] = restored_postings
+            index[term] = [
+                Posting(int(doc_id), int(tf), tuple(positions))
+                for doc_id, tf, positions in zip(
+                    all_doc_ids[start:stop],
+                    all_frequencies[start:stop],
+                    positions_by_posting,
+                    strict=True,
+                )
+            ]
+    else:
+        for term, postings in index_payload.items():
+            restored_postings: list[Posting] = []
+            if isinstance(postings, dict):
+                # Read an intermediate per-term array format as well.
+                doc_ids = np.asarray(postings["doc_ids"], dtype=np.int32)
+                frequencies = np.asarray(postings["tfs"], dtype=np.int32)
+                positions_by_posting = postings.get("positions", [()] * len(doc_ids))
+                restored_postings = [
+                    Posting(int(doc_id), int(tf), tuple(positions))
+                    for doc_id, tf, positions in zip(
+                        doc_ids, frequencies, positions_by_posting, strict=True
+                    )
+                ]
+            else:
+                # Backward compatibility with indexes created in Labs 1–7.
+                for item in postings:
+                    doc_id, tf, *extra = item
+                    positions = tuple(extra[0]) if extra else ()
+                    restored_postings.append(
+                        Posting(doc_id=doc_id, tf=tf, positions=positions)
+                    )
+            index[term] = restored_postings
 
     documents = {
         doc_id: DocMeta(

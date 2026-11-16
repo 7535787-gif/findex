@@ -138,15 +138,25 @@ def create_app(
     def make_search_response(
         request: SearchRequest,
         index: Index,
+        settings: Settings,
     ) -> SearchResponse:
         started = time.perf_counter()
         # Fetch all matches before slicing so pagination has a stable total.
-        results = run_search(index, request.q, request.scorer, index.num_docs)
+        results = run_search(
+            index,
+            request.q,
+            request.scorer,
+            index.num_docs,
+            mode=request.mode,
+            embeddings_path=settings.embeddings_path,
+            model_name=settings.embedding_model,
+        )
         total = len(results)
         start = (request.page - 1) * request.k
         page_results = results[start : start + request.k]
         return SearchResponse(
             query=request.q,
+            mode=request.mode,
             total=total,
             page=request.page,
             pages=(total + request.k - 1) // request.k,
@@ -171,11 +181,15 @@ def create_app(
             q: str = Query(..., min_length=1, max_length=200),
             k: int = Query(10, ge=1, le=100),
             scorer: str = Query("bm25", pattern="^(bm25|tfidf)$"),
+            mode: str | None = Query(None, pattern="^(bm25|tfidf|semantic|hybrid)$"),
             page: int = Query(1, ge=1),
             index: Index = Depends(get_index),
+            settings: Settings = Depends(get_settings),
         ) -> SearchResponse:
-            params = SearchRequest(q=q, k=k, scorer=scorer, page=page)
-            return make_search_response(params, index)
+            params = SearchRequest(
+                q=q, k=k, scorer=scorer, mode=mode or scorer, page=page
+            )
+            return make_search_response(params, index, settings)
     else:
 
         @application.get("/search", response_model=SearchResponse)
@@ -183,13 +197,17 @@ def create_app(
             q: str = Query(..., min_length=1, max_length=200),
             k: int = Query(10, ge=1, le=100),
             scorer: str = Query("bm25", pattern="^(bm25|tfidf)$"),
+            mode: str | None = Query(None, pattern="^(bm25|tfidf|semantic|hybrid)$"),
             page: int = Query(1, ge=1),
             index: Index = Depends(get_index),
+            settings: Settings = Depends(get_settings),
         ) -> SearchResponse:
             # Deliberately synchronous CPU work: this mode exists only for M2
             # comparison and demonstrates why async def must not block the loop.
-            params = SearchRequest(q=q, k=k, scorer=scorer, page=page)
-            return make_search_response(params, index)
+            params = SearchRequest(
+                q=q, k=k, scorer=scorer, mode=mode or scorer, page=page
+            )
+            return make_search_response(params, index, settings)
 
     @application.get("/docs/{doc_id}", response_model=DocumentResponse)
     def document_api(
@@ -242,6 +260,7 @@ def create_app(
         q: str = Query("", max_length=200),
         k: int = Query(10, ge=1, le=100),
         scorer: str = Query("bm25", pattern="^(bm25|tfidf)$"),
+        mode: str | None = Query(None, pattern="^(bm25|tfidf|semantic|hybrid)$"),
         page: int = Query(1, ge=1),
         index: Index | None = Depends(optional_index),
         settings: Settings = Depends(get_settings),
@@ -251,7 +270,11 @@ def create_app(
         if q and index is not None:
             try:
                 results = make_search_response(
-                    SearchRequest(q=q, k=k, scorer=scorer, page=page), index
+                    SearchRequest(
+                        q=q, k=k, scorer=scorer, mode=mode or scorer, page=page
+                    ),
+                    index,
+                    settings,
                 )
             except Exception:
                 logger.exception(
@@ -265,6 +288,7 @@ def create_app(
                 "query": q,
                 "k": k,
                 "scorer": scorer,
+                "mode": mode or scorer,
                 "page": page,
                 "response": results,
                 "error": error,

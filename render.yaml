@@ -11,3 +11,7 @@ services:
         value: INFO
       - key: SEARCH_MODE
         value: def
+      - key: EMBEDDINGS_PATH
+        value: /app/embeddings.npy
+      - key: EMBEDDING_MODEL
+        value: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2

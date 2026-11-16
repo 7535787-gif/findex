@@ -21,12 +21,20 @@
         <input id="q" name="q" type="search" value="{{ query }}" placeholder="Наприклад: python asyncio" maxlength="200" required>
         <input type="hidden" name="k" value="{{ k }}">
         <input type="hidden" name="scorer" value="{{ scorer }}">
+        <label class="sr-only" for="mode">Режим пошуку</label>
+        <select id="mode" name="mode">
+          <option value="bm25" {% if mode == "bm25" %}selected{% endif %}>BM25</option>
+          <option value="tfidf" {% if mode == "tfidf" %}selected{% endif %}>TF-IDF</option>
+          <option value="semantic" {% if mode == "semantic" %}selected{% endif %}>Семантичний</option>
+          <option value="hybrid" {% if mode == "hybrid" %}selected{% endif %}>Гібридний</option>
+        </select>
         <button type="submit">Шукати <span>→</span></button>
       </form>
       <div class="controls">
-        <span>Алгоритм</span>
-        <a class="{% if scorer == 'bm25' %}selected{% endif %}" href="/?q={{ query|urlencode }}&k={{ k }}&scorer=bm25">BM25</a>
-        <a class="{% if scorer == 'tfidf' %}selected{% endif %}" href="/?q={{ query|urlencode }}&k={{ k }}&scorer=tfidf">TF-IDF</a>
+        <span>Режим: {{ mode|upper }}</span>
+        {% if mode in ["semantic", "hybrid"] %}
+          <span>Для семантичного пошуку потрібен створений файл embeddings.npy.</span>
+        {% endif %}
       </div>
       {% if not index_loaded %}
         <div class="notice">Індекс ще не завантажений. Налаштуйте INDEX_PATH та перезапустіть сервіс.</div>
@@ -44,7 +52,7 @@
           <article class="result-card">
             <div class="result-meta">
               <span>DOC {{ item.doc_id }}</span>
-              <span>{% if item.match_type == "phrase" %}ТОЧНА ФРАЗА{% elif item.match_type == "partial" %}ЧАСТКОВИЙ ЗБІГ{% else %}ЗБІГ ЗА СЛОВОМ{% endif %}</span>
+              <span>{% if item.match_type == "phrase" %}ТОЧНА ФРАЗА{% elif item.match_type == "partial" %}ЧАСТКОВИЙ ЗБІГ{% elif item.match_type == "semantic" %}СЕМАНТИЧНИЙ ЗБІГ{% elif item.match_type == "hybrid" %}ГІБРИДНИЙ РЕЙТИНГ{% else %}ЗБІГ ЗА СЛОВОМ{% endif %}</span>
               <span class="score">score {{ "%.4f"|format(item.score) }}</span>
             </div>
             <h3><a href="/doc/{{ item.doc_id }}">{{ item.title }}</a></h3>
@@ -55,9 +63,9 @@
         {% endfor %}
         {% if response.pages > 1 %}
           <div class="pagination">
-            {% if response.page > 1 %}<a href="/?q={{ query|urlencode }}&k={{ k }}&scorer={{ scorer }}&page={{ response.page - 1 }}">← Назад</a>{% else %}<span></span>{% endif %}
+            {% if response.page > 1 %}<a href="/?q={{ query|urlencode }}&k={{ k }}&scorer={{ scorer }}&mode={{ mode }}&page={{ response.page - 1 }}">← Назад</a>{% else %}<span></span>{% endif %}
             <span>Сторінка {{ response.page }} з {{ response.pages }}</span>
-            {% if response.page < response.pages %}<a href="/?q={{ query|urlencode }}&k={{ k }}&scorer={{ scorer }}&page={{ response.page + 1 }}">Далі →</a>{% else %}<span></span>{% endif %}
+            {% if response.page < response.pages %}<a href="/?q={{ query|urlencode }}&k={{ k }}&scorer={{ scorer }}&mode={{ mode }}&page={{ response.page + 1 }}">Далі →</a>{% else %}<span></span>{% endif %}
           </div>
         {% endif %}
       </section>

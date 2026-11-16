@@ -28,3 +28,8 @@ crawl-*.jsonl
 crawl.log
 crawler_benchmark.csv
 crawl-index.bin
+
+# Generated semantic-search embeddings
+embeddings*.npy
+embeddings*.json
+demo-index.bin

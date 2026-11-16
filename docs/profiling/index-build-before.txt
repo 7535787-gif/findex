@@ -1,0 +1,38 @@
+         22601553 function calls (22601515 primitive calls) in 76.476 seconds
+
+   Ordered by: cumulative time
+   List reduced from 148 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.047    0.047   77.019   77.019 profile_lab8.py:42(<lambda>)
+        1    0.036    0.036   76.972   76.972 index.py:119(build_index)
+        1    7.160    7.160   75.016   75.016 index.py:60(build_partial)
+  6235040    3.876    0.000   64.699    0.000 tokenize.py:8(tokenize)
+       11   59.267    5.388   59.267    5.388 {built-in method unicodedata.normalize}
+        1    1.401    1.401    1.919    1.919 index.py:92(merge_partials)
+       11    0.000    0.000    1.290    0.117 __init__.py:602(__init__)
+       11    0.000    0.000    1.290    0.117 __init__.py:679(update)
+       11    1.290    0.117    1.290    0.117 {built-in method _collections._count_elements}
+  6235029    1.169    0.000    1.169    0.000 {method 'group' of 're.Match' objects}
+  7215263    0.972    0.000    0.972    0.000 {method 'append' of 'list' objects}
+       11    0.387    0.035    0.387    0.035 {method 'casefold' of 'str' objects}
+   967436    0.312    0.000    0.372    0.000 {method 'sort' of 'list' objects}
+       11    0.000    0.000    0.352    0.032 __init__.py:780(read_text)
+       11    0.198    0.018    0.350    0.032 {method 'read' of '_io.TextIOWrapper' objects}
+       11    0.000    0.000    0.152    0.014 <frozen codecs>:322(decode)
+       11    0.152    0.014    0.152    0.014 {built-in method _codecs.utf_8_decode}
+   967440    0.146    0.000    0.146    0.000 {method 'extend' of 'list' objects}
+   980160    0.060    0.000    0.060    0.000 index.py:108(<lambda>)
+       11    0.000    0.000    0.002    0.000 __init__.py:763(open)
+       11    0.001    0.000    0.002    0.000 {built-in method _io.open}
+        1    0.000    0.000    0.000    0.000 __init__.py:873(rglob)
+        1    0.000    0.000    0.000    0.000 __init__.py:843(glob)
+      2/1    0.000    0.000    0.000    0.000 glob.py:394(selector)
+        1    0.000    0.000    0.000    0.000 glob.py:472(recursive_selector)
+        1    0.000    0.000    0.000    0.000 glob.py:442(wildcard_selector)
+        1    0.000    0.000    0.000    0.000 glob.py:390(compile)
+        1    0.000    0.000    0.000    0.000 glob.py:349(_compile_pattern)
+       12    0.000    0.000    0.000    0.000 __init__.py:190(__fspath__)
+        2    0.000    0.000    0.000    0.000 __init__.py:330(_compile)
+
+
