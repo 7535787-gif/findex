@@ -11,8 +11,12 @@ from findex.index_model import Index
 from findex.query_parser import Phrase
 from findex.ranking import (
     BM25,
-    SearchResult as CoreSearchResult,
     TfIdf,
+)
+from findex.ranking import (
+    SearchResult as CoreSearchResult,
+)
+from findex.ranking import (
     search as ranked_search,
 )
 from findex.tokenize import tokenize

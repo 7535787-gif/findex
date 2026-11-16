@@ -7,17 +7,17 @@ import logging
 import re
 import time
 import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
-from markupsafe import Markup
 
 from findex.index import load_index
 from findex.index_model import Index

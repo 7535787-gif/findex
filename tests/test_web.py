@@ -119,8 +119,10 @@ def test_twenty_concurrent_search_requests(tiny_index: Index) -> None:
     application = create_app(Settings(index_path=None), load_on_startup=False)
     application.dependency_overrides[get_index] = lambda: tiny_index
     application.dependency_overrides[optional_index] = lambda: tiny_index
-    with TestClient(application) as test_client:
-        with ThreadPoolExecutor(max_workers=20) as pool:
+    with (
+        TestClient(application) as test_client,
+        ThreadPoolExecutor(max_workers=20) as pool,
+    ):
             responses = list(
                 pool.map(
                     lambda _: test_client.get("/search", params={"q": "python"}),
