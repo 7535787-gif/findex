@@ -100,7 +100,6 @@ def make_snippet(
     return "[No matching excerpt found]"
 
 
-
 def _extract_snippet(
     text: str,
     pattern: re.Pattern[str],
