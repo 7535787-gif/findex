@@ -74,7 +74,6 @@ def test_multiword_query_keeps_partial_matches_after_phrase_matches(tmp_path):
     assert results[1].match_type == "partial"
 
 
-
 def test_api_and_ui_expose_phrase_first_results(tmp_path):
     from fastapi.testclient import TestClient
 
@@ -111,7 +110,6 @@ def test_api_and_ui_expose_phrase_first_results(tmp_path):
         page = client.get("/", params={"q": "secure network access"})
         assert page.status_code == 200
         assert page.text.index("ТОЧНА ФРАЗА") < page.text.index("ЧАСТКОВИЙ ЗБІГ")
-
 
 
 def test_phrase_snippet_handles_latex_separators(tmp_path):

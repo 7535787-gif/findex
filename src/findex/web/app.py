@@ -82,9 +82,7 @@ def create_app(
     application.state.settings = runtime_settings
     application.state.index = None
     application.state.started_at = time.perf_counter()
-    application.mount(
-        "/static", StaticFiles(directory=str(_STATIC_DIR)), name="static"
-    )
+    application.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(_TEMPLATE_DIR))
 
     def highlight_snippet(value: str) -> Markup:
@@ -158,6 +156,7 @@ def create_app(
         )
 
     if mode == "def":
+
         @application.get("/search", response_model=SearchResponse)
         def search(
             q: str = Query(..., min_length=1, max_length=200),
@@ -169,6 +168,7 @@ def create_app(
             params = SearchRequest(q=q, k=k, scorer=scorer, page=page)
             return make_search_response(params, index)
     else:
+
         @application.get("/search", response_model=SearchResponse)
         async def search(
             q: str = Query(..., min_length=1, max_length=200),

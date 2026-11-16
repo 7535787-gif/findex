@@ -123,12 +123,12 @@ def test_twenty_concurrent_search_requests(tiny_index: Index) -> None:
         TestClient(application) as test_client,
         ThreadPoolExecutor(max_workers=20) as pool,
     ):
-            responses = list(
-                pool.map(
-                    lambda _: test_client.get("/search", params={"q": "python"}),
-                    range(20),
-                )
+        responses = list(
+            pool.map(
+                lambda _: test_client.get("/search", params={"q": "python"}),
+                range(20),
             )
+        )
     assert all(response.status_code == 200 for response in responses)
 
 

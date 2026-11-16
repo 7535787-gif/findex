@@ -29,15 +29,10 @@ def make_snippet(
 
     terms = list(
         dict.fromkeys(
-            term
-            for query_term in query_terms
-            for term in tokenize(query_term)
-            if term
+            term for query_term in query_terms for term in tokenize(query_term) if term
         )
     )
-    phrase = [
-        term for term in (phrase_terms or []) if term
-    ]
+    phrase = [term for term in (phrase_terms or []) if term]
 
     if not text or not terms:
         return text[: 2 * context_chars]
