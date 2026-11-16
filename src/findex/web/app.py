@@ -117,9 +117,18 @@ def create_app(
     def stats(
         request: Request,
         index: Index = Depends(get_index),
+        settings: Settings = Depends(get_settings),
     ) -> StatsResponse:
+        index_path = settings.index_path
+        index_size_bytes = (
+            index_path.stat().st_size
+            if index_path is not None and index_path.is_file()
+            else 0
+        )
+
         return StatsResponse(
             status="ok",
+            index_size_bytes=index_size_bytes,
             documents=index.num_docs,
             terms=len(index),
             average_document_length=index.avg_doc_length,

@@ -39,6 +39,7 @@ class DocumentResponse(BaseModel):
 
 class StatsResponse(BaseModel):
     status: str
+    index_size_bytes: int
     documents: int
     terms: int
     average_document_length: float
