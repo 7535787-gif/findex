@@ -31,9 +31,7 @@ def main() -> None:
     postings, documents, _ = load_index(args.index)
     index = Index(postings, documents)
     eligible = [
-        (term, len(items))
-        for term, items in index.items()
-        if len(term) >= 3 and items
+        (term, len(items)) for term, items in index.items() if len(term) >= 3 and items
     ]
     common = max(eligible, key=lambda pair: pair[1])[0]
     rare = min(eligible, key=lambda pair: pair[1])[0]
@@ -46,14 +44,16 @@ def main() -> None:
     for label, terms in queries:
         if not all(term in index for term in terms):
             continue
-        old = median_ms(lambda: search(index, terms, BM25(), top_k=5), args.repeats)
+        old = median_ms(
+            lambda terms=terms: search(index, terms, BM25(), top_k=5),
+            args.repeats,
+        )
         new = median_ms(
-            lambda: search_numpy(index, terms, BM25(), top_k=5), args.repeats
+            lambda terms=terms: search_numpy(index, terms, BM25(), top_k=5),
+            args.repeats,
         )
         matched_docs = {
-            posting.doc_id
-            for term in terms
-            for posting in index.get(term, ())
+            posting.doc_id for term in terms for posting in index.get(term, ())
         }
         rows.append(
             (
@@ -118,12 +118,13 @@ def main() -> None:
             f"{new_scale:.3f} | {scale_speedup:.2f}× |"
         ),
         "",
-        "На реальному корпусі короткі списки постингів не амортизують накладні "
-        "витрати NumPy, тому реалізація автоматично залишає Python-шлях для "
-        "менш ніж 64 постингів. Для довгих списків вмикається векторизований "
-        "шлях з ufunc та argpartition. Контрольний тест показує його поведінку "
-        "на навантаженні, де векторизація має сенс.",
-        "",
+        (
+            "На реальному корпусі короткі списки постингів не амортизують накладні "
+            "витрати NumPy, тому реалізація автоматично залишає Python-шлях для "
+            "менш ніж 64 постингів. Для довгих списків вмикається векторизований "
+            "шлях з ufunc та argpartition. Контрольний тест показує його поведінку "
+            "на навантаженні, де векторизація має сенс."
+        ),
     ]
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text("\n".join(lines), encoding="utf-8")

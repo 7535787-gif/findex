@@ -27,8 +27,7 @@ from rich.table import Table
 from .crawler import AsyncCrawler, CrawlStats, write_jsonl_page
 from .index import build_index, save_index
 from .index_model import Index
-from .ranking import BM25, Scorer, TfIdf
-from .ranking import search_numpy
+from .ranking import BM25, Scorer, TfIdf, search_numpy
 from .semantic import DEFAULT_MODEL, embed_index, hybrid_search, semantic_search
 from .tokenize import tokenize
 

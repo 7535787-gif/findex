@@ -17,7 +17,6 @@ from findex.ranking import BM25, search
 from findex.semantic import DEFAULT_MODEL, hybrid_search, semantic_search
 from findex.tokenize import tokenize
 
-
 PARAPHRASES: dict[str, set[int]] = {
     "drinkable fluid aquatic solvent": {2, 8, 9},
     "lifespan chronology mortality duration": {1, 2, 5, 8, 9},

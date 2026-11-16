@@ -174,9 +174,7 @@ def reciprocal_rank_fusion(
     items: dict[int, SearchResult] = {}
     for ranking in (lexical, semantic):
         for rank, item in enumerate(ranking, start=1):
-            fused[item.doc_id] = fused.get(item.doc_id, 0.0) + 1.0 / (
-                rrf_k + rank
-            )
+            fused[item.doc_id] = fused.get(item.doc_id, 0.0) + 1.0 / (rrf_k + rank)
             previous = items.get(item.doc_id)
             if previous is None or item.match_type == "semantic":
                 items[item.doc_id] = item

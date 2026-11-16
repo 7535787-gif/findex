@@ -4,14 +4,15 @@ import multiprocessing
 import pickle
 import time
 import tracemalloc
-
-import numpy as np
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, TypedDict, cast
+
+import numpy as np
+from numpy.typing import NDArray
 
 from .corpus import iter_documents
 from .timing import timed
@@ -55,6 +56,21 @@ class DocMeta:
         object.__setattr__(self, "length", values[3])
         object.__setattr__(self, "content_path", values[4])
         object.__setattr__(self, "line_offset", values[5])
+
+
+class SerializedIndexV2(TypedDict):
+    doc_ids: NDArray[np.int32]
+    tfs: NDArray[np.int32]
+    offsets: dict[str, tuple[int, int]]
+    positions: dict[str, list[tuple[int, ...]]]
+
+
+class SerializedIndex(TypedDict):
+    format_version: int
+    index: SerializedIndexV2
+    doc_lengths: NDArray[np.int32]
+    doc_length_ids: NDArray[np.int32]
+    documents: dict[int, tuple[str, str, int, str | None, int | None]]
 
 
 def build_partial(
@@ -229,7 +245,7 @@ def save_index(
 ) -> float:
     start = time.perf_counter()
 
-    data = {
+    data: SerializedIndex = {
         "format_version": 2,
         "index": {
             "doc_ids": np.fromiter(
@@ -286,7 +302,7 @@ def load_index(
     with input_path.open("rb") as file:
         # Не завантажуйте pickle-файли з ненадійних джерел:
         # pickle може виконувати довільний код.
-        data = pickle.load(file)
+        data: dict[str, Any] = pickle.load(file)
 
     index: dict[str, list[Posting]] = {}
     index_payload = data["index"]
@@ -311,11 +327,24 @@ def load_index(
             restored_postings: list[Posting] = []
             if isinstance(postings, dict):
                 # Read an intermediate per-term array format as well.
-                doc_ids = np.asarray(postings["doc_ids"], dtype=np.int32)
-                frequencies = np.asarray(postings["tfs"], dtype=np.int32)
-                positions_by_posting = postings.get("positions", [()] * len(doc_ids))
+                posting_data = cast(dict[str, Any], postings)
+
+                doc_ids: NDArray[np.int32] = np.asarray(
+                    posting_data["doc_ids"], dtype=np.int32
+                )
+                frequencies: NDArray[np.int32] = np.asarray(
+                    posting_data["tfs"], dtype=np.int32
+                )
+
+                raw_positions: Any = posting_data.get("positions")
+                positions_by_posting: list[tuple[int, ...]] = (
+                    [tuple(map(int, positions)) for positions in raw_positions]
+                    if raw_positions is not None
+                    else [()] * len(doc_ids)
+                )
+
                 restored_postings = [
-                    Posting(int(doc_id), int(tf), tuple(positions))
+                    Posting(int(doc_id), int(tf), positions)
                     for doc_id, tf, positions in zip(
                         doc_ids, frequencies, positions_by_posting, strict=True
                     )

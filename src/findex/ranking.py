@@ -119,7 +119,6 @@ def search(
     return nlargest(top_k, results)
 
 
-
 @timed
 def search_numpy(
     index: Index,
@@ -183,10 +182,10 @@ def search_numpy(
             idf = np.log1p((index.num_docs - df + 0.5) / (df + 0.5))
             doc_lengths = lengths[doc_ids]
             norm = 1.0 - scorer.b + scorer.b * doc_lengths / avg_length
-            contribution = idf * (
-                frequencies.astype(np.float64, copy=False) * (scorer.k1 + 1.0)
-            ) / (
-                frequencies.astype(np.float64, copy=False) + scorer.k1 * norm
+            contribution = (
+                idf
+                * (frequencies.astype(np.float64, copy=False) * (scorer.k1 + 1.0))
+                / (frequencies.astype(np.float64, copy=False) + scorer.k1 * norm)
             )
         elif isinstance(scorer, TfIdf):
             idf = np.log((index.num_docs + 1.0) / (df + 1.0)) + 1.0

@@ -175,7 +175,6 @@ def test_document_html_page(client: TestClient) -> None:
     assert "Python makes search useful" in response.text
 
 
-
 def test_search_mode_is_returned(client: TestClient) -> None:
     response = client.get("/search", params={"q": "python", "mode": "tfidf"})
     assert response.status_code == 200

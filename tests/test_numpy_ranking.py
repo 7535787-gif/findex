@@ -19,9 +19,7 @@ def make_index(tmp_path):
     }
     for doc_id, length in enumerate([10, 20, 15, 40]):
         path = tmp_path / f"{doc_id}.txt"
-        path.write_text(
-            ("python search engine " * (length // 3 + 1)), encoding="utf-8"
-        )
+        path.write_text(("python search engine " * (length // 3 + 1)), encoding="utf-8")
         docs[doc_id] = DocMeta(doc_id, str(path), f"doc-{doc_id}", length)
     return Index(postings, docs)
 
@@ -56,9 +54,7 @@ def test_numpy_top_k_tie_break_matches_python(tmp_path):
     for scorer in (BM25(), TfIdf()):
         expected = search(index, ["search"], scorer, top_k=2)
         actual = search_numpy(index, ["search"], scorer, top_k=2)
-        assert [item.doc_id for item in actual] == [
-            item.doc_id for item in expected
-        ]
+        assert [item.doc_id for item in actual] == [item.doc_id for item in expected]
 
 
 def test_index_persists_compact_int32_postings(tmp_path):
@@ -101,7 +97,6 @@ def test_old_index_format_remains_readable(tmp_path):
     assert len(Index(postings, documents)) == len(index)
 
 
-
 def test_vectorized_path_matches_reference_for_long_posting_lists(tmp_path):
     path = tmp_path / "shared.txt"
     path.write_text("python search", encoding="utf-8")
@@ -117,9 +112,7 @@ def test_vectorized_path_matches_reference_for_long_posting_lists(tmp_path):
     for scorer in (BM25(), TfIdf()):
         expected = search(index, ["python", "search"], scorer, top_k=25)
         actual = search_numpy(index, ["python", "search"], scorer, top_k=25)
-        assert [item.doc_id for item in actual] == [
-            item.doc_id for item in expected
-        ]
+        assert [item.doc_id for item in actual] == [item.doc_id for item in expected]
         assert np.allclose(
             [item.score for item in actual],
             [item.score for item in expected],

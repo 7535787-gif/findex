@@ -11,9 +11,9 @@ from findex.query_parser import Phrase
 from findex.ranking import (
     BM25,
     TfIdf,
+    search_numpy,
 )
 from findex.ranking import SearchResult as CoreSearchResult
-from findex.ranking import search_numpy
 from findex.semantic import DEFAULT_MODEL, hybrid_search, semantic_search
 from findex.tokenize import tokenize
 

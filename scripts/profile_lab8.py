@@ -10,7 +10,6 @@ from pathlib import Path
 from findex.index import build_index, load_index
 from findex.index_model import Index
 from findex.ranking import BM25, search
-from findex.tokenize import tokenize
 
 
 def profile_call(label, function, output_dir: Path) -> pstats.Stats:
@@ -54,10 +53,7 @@ def main() -> None:
         )
     profile_call(
         "search-before",
-        lambda: [
-            search(index, query, BM25(), top_k=10)
-            for _ in range(100)
-        ],
+        lambda: [search(index, query, BM25(), top_k=10) for _ in range(100)],
         args.out,
     )
     print(f"Profiles and pstats summaries written to {args.out}")

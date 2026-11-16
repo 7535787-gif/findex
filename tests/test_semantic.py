@@ -14,14 +14,15 @@ class FakeEncoder:
         for text in texts:
             lower = text.lower()
             rows.append(
-                [1.0, 0.0, 0.0] if "space" in lower or "cosmos" in lower
+                [1.0, 0.0, 0.0]
+                if "space" in lower or "cosmos" in lower
                 else [0.0, 1.0, 0.0]
             )
         return np.asarray(rows, dtype=np.float32)
 
 
 def test_embedding_pipeline_and_semantic_search(tmp_path, monkeypatch):
-    import findex.semantic as semantic
+    from findex import semantic
 
     monkeypatch.setattr(semantic, "_load_model", lambda model_name: FakeEncoder())
     one = tmp_path / "one.txt"
@@ -41,9 +42,7 @@ def test_embedding_pipeline_and_semantic_search(tmp_path, monkeypatch):
     matrix = np.load(path)
     assert matrix.dtype == np.float32
     assert np.allclose(np.linalg.norm(matrix, axis=1), 1.0)
-    results = semantic_search(
-        index, "cosmos", path, model_name="fake", top_k=2
-    )
+    results = semantic_search(index, "cosmos", path, model_name="fake", top_k=2)
     assert results[0].doc_id == 1
     assert results[0].match_type == "semantic"
 
