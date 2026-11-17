@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ DEFAULT_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 RRF_K = 60
 
 
+@lru_cache(maxsize=1)
 def _load_model(model_name: str) -> Any:
     try:
         from sentence_transformers import SentenceTransformer
