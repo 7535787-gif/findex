@@ -18,6 +18,7 @@ RUN groupadd --system app && useradd --system --gid app --home-dir /app app
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 COPY --from=builder --chown=app:app /app/data-index.bin /app/data-index.bin
 COPY --from=builder --chown=app:app /app/embeddings.npy /app/embeddings.npy
+COPY --from=builder --chown=app:app /app/embeddings.json /app/embeddings.json
 COPY --from=builder --chown=app:app /opt/huggingface /opt/huggingface
 COPY --from=builder --chown=app:app /app/data /app/data
 COPY --chown=app:app src ./src
