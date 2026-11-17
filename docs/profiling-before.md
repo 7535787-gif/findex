@@ -1,30 +1,68 @@
-# Profiling results before optimization
+# Результати профілювання до оптимізації
 
-Measurements were taken against the supplied full corpus (11 text files, including the large encyclopedia export) and the existing full index (967,436 terms). The index build was profiled once; the three-term search `його вода роки` was profiled over 100 repeated calls to make the short request measurable.
+Вимірювання проводилися на повному наборі тестових даних, що містив 11 текстових файлів, зокрема великий експорт енциклопедичних матеріалів. На момент профілювання індекс містив 967 436 термінів.
 
-## `findex index` — cProfile
+Побудову індексу профільовано один раз. Для аналізу пошуку використовувався трикомпонентний запит `його вода роки`, виконаний 100 разів, щоб отримати достатньо точні вимірювання для короткої операції.
 
-- Total profiled build: **23.52 s** (instrumented run).
-- `build_partial`: **21.34 s cumulative / 8.49 s self**. Python document loop, token counting and posting construction.
-- `tokenize`: **8.16 s cumulative / 3.05 s self**. Python generator and regex/token handling.
-- `unicodedata.normalize`: **2.87 s**. CPython built-in/native Unicode normalization.
-- Additional native-heavy work: `_collections._count_elements` **1.26 s**; file reads **1.26 s**.
+## 1. Побудова індексу (`findex index`) — cProfile
 
-## `findex search` — cProfile
+Загальний час профільованої побудови індексу становив **23,52 с**.
 
-100 repeated runs of `його вода роки` took **0.049 s** in total (~0.49 ms per call under profiler).
+Найбільші витрати часу спостерігалися в таких функціях:
 
-The largest cumulative costs were:
-1. `make_snippet`: **0.035 s** total across 1,100 calls; Python snippet preparation and matching.
-2. File open: **0.012 s** total across 1,100 calls; operating-system I/O boundary.
-3. `tokenize`: **0.008 s** total across 7,200 calls; Python token normalization/regex.
+- `build_partial` — **21,34 с сукупного часу / 8,49 с власного часу**. Основні операції: обхід документів, підрахунок термінів і формування списків входжень.
+- `tokenize` — **8,16 с сукупного часу / 3,05 с власного часу**. Функція відповідає за токенізацію тексту та його попередню обробку.
+- `unicodedata.normalize` — **2,87 с**. Вбудована функція Python для нормалізації Unicode-тексту.
+- Додаткові витрати: `_collections._count_elements` — **1,26 с**, читання файлів — **1,26 с**.
 
-Scorer calls themselves were small on this corpus because the index has only 11 documents and the query lists are short.
+## 2. Пошук документів (`findex search`) — cProfile
 
-## Python versus native work
+100 повторень пошукового запиту `його вода роки` зайняли загалом **0,049 с**, тобто приблизно **0,49 мс на один запит** у профільованому режимі.
 
-cProfile identifies Python functions and CPython built-ins but does not provide Scalene's exact Python/native split. Based on the profiled call sites, `build_partial`, `tokenize`, `make_snippet`, and ranking loops are Python work; `unicodedata.normalize`, `_collections._count_elements`, regex engine calls, and file reads execute in native/runtime code. Run the Scalene command in `LAB08-PROFILING.md` on the development machine to obtain the actual percentage split. Scalene and py-spy were not installed in the execution environment used to prepare this patch, so no fabricated sampling percentages are reported.
+Найбільші сукупні витрати часу:
 
-## Flame view
+1. `make_snippet` — **0,035 с** для 1100 викликів. Підготовка та пошук текстових фрагментів для результатів.
+2. Відкриття файлів — **0,012 с** для 1100 операцій. Витрати на операції введення-виведення.
+3. `tokenize` — **0,008 с** для 7200 викликів. Нормалізація та обробка пошукових термінів.
 
-`docs/flamegraph.svg` is a cProfile cumulative-call-tree view generated from the measured index-build profile. It is explicitly not a py-spy sample flame graph. Use the py-spy command in `LAB08-PROFILING.md` to generate the true sampling flame graph on the workstation and replace this file.
+Витрати часу безпосередньо на ранжування були незначними. Це пояснюється невеликим розміром набору даних: індекс містив лише 11 документів, а пошуковий запит складався з трьох термінів.
+
+## 3. Аналіз навантаження Python та Native за допомогою Scalene
+
+Для детальнішого аналізу використано Scalene, який дає змогу оцінити процесорне навантаження, пов'язане з виконанням Python-коду та нативних операцій.
+
+### 3.1. Побудова індексу
+
+| Файл / функція | Python CPU, % | Native CPU, % | Загальний CPU файлу, % |
+|---|---:|---:|---:|
+| `tokenize.py` — `tokenize` | 0,108 | 8,311 | 9,273 |
+| `snippets.py` — `make_snippet` | 0,000 | 4,349 | 4,689 |
+| `index.py` — `build_partial` | 0,007 | 0,932 | 1,551 |
+| `index.py` — `merge_partials` | 0,003 | 0,243 | 1,551 |
+| `index.py` — `load_index` | 0,006 | 0,194 | 1,551 |
+
+### 3.2. Пошук документів
+
+Під час профілювання пошуку отримано такі показники для функції формування фрагментів результатів:
+
+| Файл / функція | Python CPU, % | Native CPU, % | Загальний CPU файлу, % |
+|---|---:|---:|---:|
+| `snippets.py` — `make_snippet` | 0,003 | 12,034 | 13,376 |
+
+Результати показують, що значна частина виміряного процесорного навантаження пов'язана з нативними операціями та виконанням бібліотечних функцій, а не лише з безпосереднім виконанням Python-коду.
+
+### 3.3. Визначення основних вузьких місць
+
+За результатами профілювання визначено три основні напрями для подальшої оптимізації:
+
+1. **Токенізація тексту (`tokenize`)** — обробка тексту, регулярні вирази та нормалізація Unicode створюють помітне навантаження під час побудови індексу. Гіпотеза: зменшення повторної обробки тексту може скоротити час індексування.
+
+2. **Формування фрагментів результатів (`make_snippet`)** — ця функція має найбільший показник загального CPU серед функцій проєкту під час профілювання пошуку. Гіпотеза: зменшення повторного сканування тексту та оптимізація пошуку відповідних фрагментів можуть прискорити обробку запитів.
+
+3. **Побудова часткового індексу (`build_partial`)** — функція відповідає за обробку документів і формування структур індексу. Гіпотеза: використання компактніших структур даних та оптимізація числових операцій можуть зменшити витрати ресурсів.
+
+## 4. Візуалізація профілювання
+
+Результати профілювання збережено в каталозі `docs/profiling/`. Він містить SVG-візуалізації py-spy для побудови індексу та пошуку, а також JSON-звіти Scalene.
+
+Файл `docs/flamegraph.svg` містить візуалізацію дерева викликів cProfile, а не семплінгову flame graph py-spy.
